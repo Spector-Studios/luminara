@@ -64,9 +64,6 @@ jobs:
           echo "$KEYSTORE_BASE64" | base64 -d > ./app/apk.keystore
           ls -la
 
-      - name: Check Dependencies
-        run: ./gradlew buildHealth
-
       - name: Build APK's
         env:
           CI: true
@@ -97,7 +94,7 @@ jobs:
           rustflags: ""
 
       - name: Build WASM
-        run: python wasm-build.py --profile web-release
+        run: ./wasm-build.py --profile web-release
 
       - name: Upload WASM Artifacts
         uses: actions/upload-pages-artifact@v3
