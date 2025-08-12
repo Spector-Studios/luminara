@@ -1,0 +1,23 @@
+[package]
+name = "luminara"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["lib", "cdylib"]
+
+[workspace]
+
+[dependencies]
+arrayvec = "0.7.6"
+bracket-pathfinding = "0.8.7"
+macroquad = "0.4.14"
+
+[profile.android-dev]
+inherits = "dev"
+
+[profile.android-release]
+inherits = "release"
+
+[profile.web-release]
+inherits = "release"

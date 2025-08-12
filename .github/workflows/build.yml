@@ -1,0 +1,130 @@
+name: Build and Deploy
+
+on:
+  push: { branches: ["main"] }
+  workflow_dispatch:
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
+# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  android-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Setup Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          target: "aarch64-linux-android, armv7-linux-androideabi, i686-linux-android, x86_64-linux-android"
+          cache-workspaces: "."
+          rustflags: ""
+
+      - name: Install cargo-ndk
+        run: cargo install cargo-ndk
+
+      - name: NDK cache
+        id: cache-ndk
+        env:
+          cache-name: ndk-r25b-cache
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/lib/android/sdk/ndk/27.1.12297006
+          key: build-${{ env.cache-name }}
+
+      - name: Download NDK
+        run: |
+          cd $ANDROID_HOME/cmdline-tools/latest/bin
+          ./sdkmanager "ndk;27.1.12297006"
+
+      - name: Write Keystore file
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > ./app/apk.keystore
+          ls -la
+
+      - name: Check Dependencies
+        run: ./gradlew buildHealth
+
+      - name: Build APK's
+        env:
+          CI: true
+          KEYSTORE_PATH: apk.keystore
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          #ANDROID_NDK_HOME: $ANDROID_NDK_ROOT
+        run: ./gradlew assemble
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Built-APK
+          path: ./app/build/outputs/apk
+
+  web-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          target: "wasm32-unknown-unknown"
+          cache-workspaces: "."
+          rustflags: ""
+
+      - name: Build WASM
+        run: ./wasm-build.py --profile web-release
+
+      - name: Upload WASM Artifacts
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './dist'
+
+  deploy:
+    needs: web-build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  formatting:
+    name: cargo fmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Ensure rustfmt is installed and setup problem matcher
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          components: rustfmt
+      - name: Rustfmt Check
+        uses: actions-rust-lang/rustfmt@v1
+        with:
+          manifest-path: ./Cargo.toml
