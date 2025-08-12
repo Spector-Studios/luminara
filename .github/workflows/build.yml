@@ -97,7 +97,7 @@ jobs:
           rustflags: ""
 
       - name: Build WASM
-        run: ./wasm-build.py --profile web-release
+        run: python wasm-build.py --profile web-release
 
       - name: Upload WASM Artifacts
         uses: actions/upload-pages-artifact@v3
