@@ -77,7 +77,7 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Built-APK
+          name: Luminara-APKs
           path: ./app/build/outputs/apk
 
   web-build:
