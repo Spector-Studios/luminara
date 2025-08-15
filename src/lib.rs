@@ -1,8 +1,12 @@
 use macroquad::prelude::*;
 
-use crate::game::Game;
+use crate::{assets::TextureStore, game::Game, map::Map, render::Viewport};
 
+mod assets;
 mod game;
+mod map;
+mod render;
+mod state;
 
 #[allow(dead_code)]
 mod _native_glue {
@@ -21,18 +25,28 @@ mod _native_glue {
 
 #[macroquad::main("BasicShapes")]
 pub async fn main() {
-    let mut game = Game::new();
-    game.spawn_unit();
-    game.update();
-    game.render();
+    set_pc_assets_folder("assets");
+    set_default_filter_mode(FilterMode::Nearest);
+
+    let mut texture_store = TextureStore::new();
+    let grass = texture_store.load("grass1.png");
+    let forest = texture_store.load("forest1.png");
+
+    let map = Map::filled(80, 40, grass, forest);
+    let viewport = Viewport::new(
+        map.width.try_into().unwrap(),
+        map.height.try_into().unwrap(),
+    );
+
+    let mut game = Game::new(map, viewport, texture_store);
 
     loop {
-        clear_background(RED);
+        clear_background(BLACK);
 
-        draw_line(40.0, 40.0, 100.0, 200.0, 15.0, BLUE);
-        draw_rectangle(screen_width() / 2.0 - 60.0, 100.0, 120.0, 60.0, GREEN);
-        draw_circle(screen_width() - 30.0, screen_height() - 30.0, 15.0, YELLOW);
-        draw_text("HELLO", 20.0, 20.0, 20.0, DARKGRAY);
+        game.async_update().await;
+
+        game.update();
+        game.render();
 
         next_frame().await
     }

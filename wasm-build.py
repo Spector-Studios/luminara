@@ -1,11 +1,13 @@
 #!/bin/python
 import argparse
+import atexit
 import http.server
-import os
 import shutil
+import signal
 import socketserver
 import subprocess
 import sys
+import threading
 import webbrowser
 from pathlib import Path
 
@@ -38,6 +40,10 @@ parser.add_argument(
 args = parser.parse_args()
 
 
+class ReusableTCPServer(socketserver.TCPServer):
+    allow_reuse_address = True
+
+
 def clearDirectory(dirPath: Path):
     for item in dirPath.iterdir():
         if item.is_file():
@@ -47,22 +53,32 @@ def clearDirectory(dirPath: Path):
 
 
 def devServer(path: Path):
-    os.chdir(outPath)
     PORT = 8000
-    Handler = http.server.SimpleHTTPRequestHandler
-    webbrowser.open_new(f"http:://localhoast:{PORT}/game")
+
+    def handle_factory(*args, **kwargs):
+        return http.server.SimpleHTTPRequestHandler(
+            *args, directory=str(path), **kwargs
+        )
+
+    web_url = f"http://localhost:{PORT}/game"
+    webbrowser.open_new(web_url)
     try:
-        subprocess.run(["termux-open-url", f"http://localhost:{PORT}/game"])
+        subprocess.run(["termux-open-url", web_url])
     except FileNotFoundError:
         pass
 
-    with socketserver.TCPServer(("", PORT), Handler) as httpd:
-        print(f"Serving at http://localhost:{PORT}")
-        try:
-            httpd.serve_forever()
-        except KeyboardInterrupt:
-            print("Exiting...")
-            httpd.shutdown()
+    with ReusableTCPServer(("", PORT), handle_factory) as httpd:
+        atexit.register(httpd.server_close)
+        print(f"Serving at {web_url}")
+
+        def shutdown_handler(signum, frame):
+            print("\nShutting down server...")
+            threading.Thread(target=httpd.shutdown, daemon=True).start()
+
+        signal.signal(signal.SIGINT, shutdown_handler)
+        signal.signal(signal.SIGTERM, shutdown_handler)
+
+        httpd.serve_forever()
 
 
 if __name__ == "__main__":

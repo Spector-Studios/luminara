@@ -1,38 +1,32 @@
-use std::ops::{Deref, DerefMut};
+use crate::assets::TextureStore;
+use crate::map::*;
+use crate::render::Viewport;
+use crate::state::*;
 
-use arrayvec::ArrayVec;
 use bracket_pathfinding::prelude::*;
+use input_lib::{ButtonState, Controller};
+use macroquad::color::RED;
+use macroquad::shapes::draw_rectangle;
 
-const STACK_DEPTH: usize = 5;
+use std::ops::Deref;
+use std::ops::DerefMut;
 
 pub struct Cursor {
     pos: Point,
 }
 
-pub enum GameState {
-    Player {
-        cursor: Cursor,
-        p_state: PlayerState,
-    },
-    Enemy(EnemyState),
-    Animation(AnimationState),
+impl Cursor {
+    pub fn shift(&mut self, delta: impl Into<Point>, map: &Map) {
+        self.pos += delta.into();
+        self.pos.x = self.pos.x.clamp(0, (map.width - 1).try_into().unwrap());
+        self.pos.y = self.pos.y.clamp(0, (map.height - 1).try_into().unwrap());
+    }
 }
 
-pub enum PlayerState {
-    SelectUnit,
-    MoveUnit(UnitId),
-    Attack(UnitId),
-}
-
-pub enum EnemyState {
-    Manager,
-    Move(UnitId),
-    Attack(UnitId),
-}
-
-pub enum AnimationState {
-    Move { unit: UnitId, dest: Point },
-    Attack { attacker: UnitId, defender: UnitId },
+impl Cursor {
+    pub fn new() -> Self {
+        Self { pos: Point::zero() }
+    }
 }
 
 pub enum Faction {
@@ -42,7 +36,8 @@ pub enum Faction {
 }
 
 macro_rules! create_id {
-    ($name:ident) => {
+    ($name: ident) => {
+        #[derive(Clone, Copy, Debug)]
         pub struct $name(u32);
         impl Deref for $name {
             type Target = u32;
@@ -79,35 +74,75 @@ pub struct Unit {
 }
 
 pub struct Game {
-    state_stack: ArrayVec<GameState, STACK_DEPTH>,
+    state_machine: StateMachine,
+    texture_store: TextureStore,
     units: Vec<Unit>,
+    map: Map,
+    viewport: Viewport,
+    controller: Controller,
+    cursor: Cursor,
     next_unit_id: u32,
     next_weapon_id: u32,
 }
 
 impl Game {
-    pub fn new() -> Self {
+    pub fn new(map: Map, viewport: Viewport, texture_store: TextureStore) -> Self {
         Self {
-            state_stack: ArrayVec::new(),
+            state_machine: StateMachine::new(),
+            texture_store,
+            map,
+            viewport,
+            controller: Controller::new(),
+            cursor: Cursor::new(),
             units: Vec::new(),
             next_unit_id: 0,
             next_weapon_id: 0,
         }
     }
-    pub fn update(&mut self) {
-        match self.state_stack.last_mut().unwrap() {
-            GameState::Player { cursor, p_state } => todo!(),
-            GameState::Enemy(enemy_state) => todo!(),
-            GameState::Animation(animation_state) => todo!(),
-        }
-    }
-    pub fn render(&self) {}
-    pub fn spawn_unit(&mut self) {
-        let unitid = UnitId::new(self.next_unit_id);
-        self.next_unit_id += 1;
+
+    pub async fn async_update(&mut self) {
+        self.texture_store.update().await;
     }
 
-    pub fn update_player(cursor: Cursor, state: PlayerState) -> Option<u32> {
-        todo!()
+    pub fn update(&mut self) {
+        // INFO Pre Update
+        self.controller.update();
+        let input = self.controller.button_state;
+
+        // INFO Update
+        let maybe_transition = match self.state_machine.current_state() {
+            GameState::Player(player_state) => self.update_player(player_state, input),
+            GameState::Enemy(enemy_state) => todo!(),
+            GameState::Animation(animation_state) => todo!(),
+        };
+
+        if let Some(transition) = maybe_transition {
+            self.state_machine.transition(transition);
+        }
+
+        // INFO Post Update
+        self.viewport.update(self.cursor.pos);
+    }
+    pub fn render(&self) {
+        self.controller.draw(None);
+        self.viewport.render(&self.map, &self.texture_store);
+
+        draw_rectangle(
+            self.viewport.screen_x(self.cursor.pos.x),
+            self.viewport.screen_y(self.cursor.pos.y),
+            Viewport::tile_size(),
+            Viewport::tile_size(),
+            RED,
+        );
+    }
+
+    pub fn update_player(
+        &mut self,
+        player_state: PlayerState,
+        input: ButtonState,
+    ) -> Option<Transition> {
+        let delta = (input.dpad_x, -input.dpad_y);
+        self.cursor.shift(delta, &self.map);
+        None
     }
 }
