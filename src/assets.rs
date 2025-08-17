@@ -1,10 +1,11 @@
-use std::{collections::HashMap, num::NonZero};
+use std::collections::HashMap;
 
-use macroquad::texture::{Texture2D, load_texture};
+use macroquad::texture::{Texture2D, build_textures_atlas, load_texture};
 
 #[derive(Clone, Copy, Debug)]
 pub struct TextureHandle(usize);
 
+#[derive(Debug)]
 pub struct TextureStore {
     textures: Vec<Texture2D>,
     handles: HashMap<String, TextureHandle>,
@@ -39,9 +40,15 @@ impl TextureStore {
             let texture = load_texture(&path).await.unwrap();
             self.textures[handle.0] = texture;
         }
+
+        build_textures_atlas();
     }
 
     pub fn get(&self, handle: TextureHandle) -> &Texture2D {
         &self.textures[handle.0]
+    }
+
+    pub fn get_key(&self, path: &str) -> TextureHandle {
+        *self.handles.get(path).unwrap()
     }
 }

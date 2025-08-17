@@ -73,7 +73,8 @@ impl Default for ButtonState {
 
 pub struct Controller {
     buttons: [(XButton, ButtonKind); 10],
-    pub button_state: ButtonState,
+    button_state: ButtonState,
+    last_state: ButtonState,
 }
 
 impl Controller {
@@ -126,10 +127,13 @@ impl Controller {
                 ),
             ],
             button_state: ButtonState::new(),
+            last_state: ButtonState::new(),
         }
     }
 
+    #[inline]
     pub fn update(&mut self) {
+        self.last_state = self.button_state;
         self.button_state.reset();
         for (btn, flag) in &mut self.buttons {
             btn.update();
@@ -139,6 +143,17 @@ impl Controller {
         }
     }
 
+    #[inline]
+    pub fn button_state(&self) -> ButtonState {
+        self.button_state
+    }
+
+    #[inline]
+    pub fn last_state(&self) -> ButtonState {
+        self.last_state
+    }
+
+    #[inline]
     pub fn draw(&self, font: Option<&Font>) {
         for (btn, _) in &self.buttons {
             btn.draw(font);

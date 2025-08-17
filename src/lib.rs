@@ -1,10 +1,13 @@
-use macroquad::prelude::*;
+// INFO use macroquad::experimental::animation;
+use macroquad::prelude::{collections::storage, *};
 
-use crate::{assets::TextureStore, game::Game, map::Map, render::Viewport};
+use crate::{assets::TextureStore, game::Engine, map::Map, render::RenderContext};
 
 mod assets;
+mod cursor;
 mod game;
 mod map;
+mod pathfinding;
 mod render;
 mod state;
 
@@ -23,7 +26,7 @@ mod _native_glue {
     }
 }
 
-#[macroquad::main("BasicShapes")]
+#[macroquad::main("Luminara")]
 pub async fn main() {
     set_pc_assets_folder("assets");
     set_default_filter_mode(FilterMode::Nearest);
@@ -31,19 +34,24 @@ pub async fn main() {
     let mut texture_store = TextureStore::new();
     let grass = texture_store.load("grass1.png");
     let forest = texture_store.load("forest1.png");
+    let _ = texture_store.load("unit1.png");
+
+    texture_store.update().await;
 
     let map = Map::filled(80, 40, grass, forest);
-    let viewport = Viewport::new(
+    let render_context = RenderContext::new(
+        texture_store,
         map.width.try_into().unwrap(),
         map.height.try_into().unwrap(),
     );
 
-    let mut game = Game::new(map, viewport, texture_store);
+    storage::store("Global Storage");
+    debug!("{:?}", *storage::get::<&str>());
+
+    let mut game = Engine::new(map, render_context);
 
     loop {
         clear_background(BLACK);
-
-        game.async_update().await;
 
         game.update();
         game.render();

@@ -10,6 +10,7 @@ pub struct XButton {
 }
 
 impl XButton {
+    #[inline]
     pub fn new(rect: Rect, label: &str, color: Color) -> Self {
         Self {
             rect,
@@ -19,12 +20,14 @@ impl XButton {
         }
     }
 
+    #[inline]
     pub fn update(&mut self) {
         self.is_pressed = touches()
             .iter()
             .any(|touch| self.rect.contains(touch.position));
     }
 
+    #[inline]
     pub fn draw(&self, font: Option<&Font>) {
         draw_rectangle(
             self.rect.x,

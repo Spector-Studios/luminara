@@ -5,9 +5,10 @@ use crate::assets::TextureHandle;
 
 pub struct Map {
     tiles: Vec<TileType>,
+    terrain: Vec<Terrain>,
     textures: Vec<TextureHandle>,
-    pub width: u32,
-    pub height: u32,
+    pub width: usize,
+    pub height: usize,
 }
 
 impl Map {
@@ -16,9 +17,10 @@ impl Map {
         let capacity = (width * height) as usize;
         Self {
             tiles: Vec::with_capacity(capacity),
+            terrain: Vec::with_capacity(capacity),
             textures: Vec::with_capacity(capacity),
-            width: width,
-            height: height,
+            width: width as usize,
+            height: height as usize,
         }
     }
 
@@ -26,13 +28,15 @@ impl Map {
         let mut map = Self::empty(width, height);
 
         for _ in 0..width * height {
-            match [TileType::Road, TileType::Mountain].choose().unwrap() {
-                TileType::Road => {
-                    map.tiles.push(TileType::Road);
+            match [TileType::Ground, TileType::Forest].choose().unwrap() {
+                TileType::Ground => {
+                    map.tiles.push(TileType::Ground);
+                    map.terrain.push(Terrain::Ground);
                     map.textures.push(grass);
                 }
-                TileType::Mountain => {
-                    map.tiles.push(TileType::Mountain);
+                TileType::Forest => {
+                    map.tiles.push(TileType::Forest);
+                    map.terrain.push(Terrain::Forest);
                     map.textures.push(forest);
                 }
             }
@@ -43,6 +47,10 @@ impl Map {
 
     pub fn get(&self, pos: impl Into<Point>) -> TileType {
         *self.tiles.get(self.point2d_to_index(pos.into())).unwrap()
+    }
+
+    pub fn get_terrain(&self, pos: impl Into<Point>) -> Terrain {
+        *self.terrain.get(self.point2d_to_index(pos.into())).unwrap()
     }
 
     pub fn get_texture_handle(&self, pos: impl Into<Point>) -> TextureHandle {
@@ -62,6 +70,14 @@ impl BaseMap for Map {}
 
 #[derive(Clone, Copy, Debug)]
 pub enum TileType {
-    Road,
+    Ground,
+    Forest,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum Terrain {
+    Ground,
+    Forest,
     Mountain,
+    River,
 }

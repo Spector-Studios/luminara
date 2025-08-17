@@ -1,41 +1,41 @@
-use bracket_pathfinding::prelude::{Algorithm2D, Point, Rect};
+use bracket_pathfinding::prelude::{Point, Rect};
 use macroquad::prelude::vec2;
-use macroquad::{
-    color::{BLACK, WHITE},
-    shapes::draw_rectangle_lines,
-    text::draw_text,
-    texture::{DrawTextureParams, draw_texture_ex},
-    window::{screen_height, screen_width},
-};
+use macroquad::prelude::*;
 
 use crate::{
-    assets::TextureStore,
-    map::{Map, TileType},
+    assets::{TextureHandle, TextureStore},
+    map::Map,
 };
 
 // TODO Scale with window
 const VIEWPORT_WIDTH: i32 = 15;
 const VIEWPORT_HEIGHT: i32 = 10;
 
-pub struct Viewport {
+#[derive(Debug)]
+pub struct RenderContext {
+    pub texture_store: TextureStore,
     view_rect: Rect,
     map_width: i32,
     map_height: i32,
+    tile_size: f32,
+    offset_x: f32,
+    offset_y: f32,
 }
 
-impl Viewport {
-    pub fn new(map_width: i32, map_height: i32) -> Self {
-        let mut x = 0 - (VIEWPORT_WIDTH / 2);
-        let mut y = 0 - (VIEWPORT_HEIGHT / 2);
-
-        x = x.clamp(0, map_width - VIEWPORT_WIDTH);
-        y = y.clamp(0, map_height - VIEWPORT_HEIGHT);
-
-        Self {
-            view_rect: Rect::with_size(x, y, VIEWPORT_WIDTH, VIEWPORT_HEIGHT),
+impl RenderContext {
+    pub fn new(texture_store: TextureStore, map_width: i32, map_height: i32) -> Self {
+        let mut render_context = Self {
+            texture_store,
+            view_rect: Rect::with_size(0, 0, VIEWPORT_WIDTH, VIEWPORT_HEIGHT),
             map_width,
             map_height,
-        }
+            tile_size: 0.0,
+            offset_x: 0.0,
+            offset_y: 0.0,
+        };
+
+        render_context.update((0, 0));
+        render_context
     }
 
     pub fn update(&mut self, cursor_pos: impl Into<Point>) {
@@ -62,19 +62,23 @@ impl Viewport {
         // INFO May be make a Rect.translate() method?
         self.view_rect.x2 = self.view_rect.x1 + VIEWPORT_WIDTH;
         self.view_rect.y2 = self.view_rect.y1 + VIEWPORT_HEIGHT;
+
+        self.tile_size = (screen_width() * 0.99) / VIEWPORT_WIDTH as f32;
+        self.offset_x = (screen_width() - (screen_width() * 0.99)) / 2.0;
+        self.offset_y = (screen_height() - (screen_height() * 0.7)) / 2.0;
     }
 
     pub fn map_view_rect(&self) -> &Rect {
         &self.view_rect
     }
 
-    pub fn render(&self, map: &Map, texture_store: &TextureStore) {
+    pub fn render_map(&self, map: &Map) {
         let params = DrawTextureParams {
-            dest_size: Some(vec2(Self::tile_size(), Self::tile_size())),
+            dest_size: Some(vec2(self.tile_size, self.tile_size)),
             ..Default::default()
         };
         self.view_rect.for_each(|pt| {
-            let texture = texture_store.get(map.get_texture_handle(pt));
+            let texture = self.texture_store.get(map.get_texture_handle(pt));
 
             draw_texture_ex(
                 texture,
@@ -86,31 +90,45 @@ impl Viewport {
             draw_rectangle_lines(
                 self.screen_x(pt.x),
                 self.screen_y(pt.y),
-                Self::tile_size(),
-                Self::tile_size(),
+                self.tile_size,
+                self.tile_size,
                 5.0,
                 BLACK,
             );
         });
     }
 
-    pub fn screen_x(&self, tile_x: i32) -> f32 {
-        ((tile_x - self.view_rect.x1) as f32) * Self::tile_size() + Self::offset_x()
+    pub fn render_sprite(&self, pos: impl Into<Point>, texture_handle: TextureHandle) {
+        let texture = self.texture_store.get(texture_handle);
+        let (x, y) = self.screen_pos(pos);
+        let params = DrawTextureParams {
+            dest_size: Some(vec2(self.tile_size, self.tile_size)),
+            ..Default::default()
+        };
+
+        draw_texture_ex(texture, x, y, WHITE, params);
     }
 
-    pub fn screen_y(&self, tile_y: i32) -> f32 {
-        ((tile_y - self.view_rect.y1) as f32) * Self::tile_size() + Self::offset_y()
+    pub fn render_tile_rectangle(&self, pos: impl Into<Point>, color: Color) {
+        let (x, y) = self.screen_pos(pos);
+        let (w, h) = (self.tile_size, self.tile_size);
+        draw_rectangle(x, y, w, h, color);
     }
 
-    fn offset_x() -> f32 {
-        (screen_width() - (screen_width() * 0.99)) / 2.0
+    pub fn in_bounds(&self, pt: impl Into<Point>) -> bool {
+        self.view_rect.point_in_rect(pt.into())
     }
 
-    fn offset_y() -> f32 {
-        (screen_height() - (screen_height() * 0.7)) / 2.0
+    pub fn screen_pos(&self, tile_pos: impl Into<Point>) -> (f32, f32) {
+        let tile_pos = tile_pos.into();
+        (self.screen_x(tile_pos.x), self.screen_y(tile_pos.y))
     }
 
-    pub fn tile_size() -> f32 {
-        (screen_width() * 0.99) / VIEWPORT_WIDTH as f32
+    fn screen_x(&self, tile_x: i32) -> f32 {
+        ((tile_x - self.view_rect.x1) as f32) * self.tile_size + self.offset_x
+    }
+
+    fn screen_y(&self, tile_y: i32) -> f32 {
+        ((tile_y - self.view_rect.y1) as f32) * self.tile_size + self.offset_y
     }
 }
