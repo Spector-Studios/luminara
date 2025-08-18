@@ -1,8 +1,3 @@
-// INFO use macroquad::experimental::animation;
-use macroquad::prelude::{collections::storage, *};
-
-use crate::{assets::TextureStore, game::Engine, map::Map, render::RenderContext};
-
 mod assets;
 mod cursor;
 mod game;
@@ -10,6 +5,14 @@ mod map;
 mod pathfinding;
 mod render;
 mod state;
+mod unit;
+mod world;
+
+use crate::{assets::TextureStore, game::Engine, map::Map, render::RenderContext};
+
+// use macroquad::experimental::animation;
+use macroquad::experimental::collections::storage;
+use macroquad::prelude::*;
 
 #[allow(dead_code)]
 mod _native_glue {
@@ -35,6 +38,7 @@ pub async fn main() {
     let grass = texture_store.load("grass1.png");
     let forest = texture_store.load("forest1.png");
     let _ = texture_store.load("unit1.png");
+    let _ = texture_store.load("mage1.png");
 
     texture_store.update().await;
 

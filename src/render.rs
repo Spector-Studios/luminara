@@ -1,11 +1,11 @@
-use bracket_pathfinding::prelude::{Point, Rect};
-use macroquad::prelude::vec2;
-use macroquad::prelude::*;
-
 use crate::{
     assets::{TextureHandle, TextureStore},
     map::Map,
 };
+
+use bracket_pathfinding::prelude::{Point, Rect};
+use macroquad::prelude::vec2;
+use macroquad::prelude::*;
 
 // TODO Scale with window
 const VIEWPORT_WIDTH: i32 = 15;

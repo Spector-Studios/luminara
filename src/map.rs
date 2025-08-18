@@ -1,7 +1,7 @@
+use crate::assets::TextureHandle;
+
 use bracket_pathfinding::prelude::{Algorithm2D, BaseMap, Point};
 use macroquad::rand::ChooseRandom;
-
-use crate::assets::TextureHandle;
 
 pub struct Map {
     tiles: Vec<TileType>,

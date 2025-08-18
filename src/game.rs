@@ -1,85 +1,19 @@
-use crate::assets::TextureHandle;
-use crate::assets::TextureStore;
 use crate::cursor::Cursor;
 use crate::map::*;
 use crate::pathfinding::DijkstraMap;
 use crate::render::RenderContext;
 use crate::state::*;
+use crate::unit::Unit;
+use crate::unit::UnitId;
+use crate::world::Faction;
+use crate::world::WorldState;
+
+use std::collections::HashMap;
 
 use bracket_pathfinding::prelude::*;
 use input_lib::Buttons;
 use input_lib::Controller;
 use macroquad::prelude::*;
-
-use std::collections::HashMap;
-use std::ops::Deref;
-use std::ops::DerefMut;
-
-pub enum Faction {
-    Player,
-    Neutral,
-    Enemy,
-}
-
-macro_rules! create_id {
-    ($name: ident) => {
-        #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-        pub struct $name(u32);
-        impl Deref for $name {
-            type Target = u32;
-            fn deref(&self) -> &Self::Target {
-                &self.0
-            }
-        }
-        impl DerefMut for $name {
-            fn deref_mut(&mut self) -> &mut Self::Target {
-                &mut self.0
-            }
-        }
-        impl $name {
-            fn new(id: u32) -> Self {
-                Self(id)
-            }
-        }
-    };
-}
-
-create_id!(WeaponId);
-create_id!(UnitId);
-
-pub struct Weapon {
-    id: WeaponId,
-}
-
-pub struct Unit {
-    id: UnitId,
-    pub movement: u32,
-    faction: Faction,
-    health: i32,
-    pub pos: Point,
-    pub render_pos: Option<Vec2>,
-    pub texture_handle: TextureHandle,
-    weapon: Option<Weapon>,
-}
-
-impl Unit {
-    pub fn get_movement_cost(&self, terrain: Terrain) -> u32 {
-        match terrain {
-            Terrain::Ground => 1,
-            Terrain::Forest => 2,
-            Terrain::Mountain => DijkstraMap::UNREACHABLE,
-            Terrain::River => DijkstraMap::UNREACHABLE,
-        }
-    }
-}
-
-pub struct WorldState {
-    units: HashMap<UnitId, Unit>,
-    map: Map,
-    timer: f32,
-    next_unit_id: u32,
-    next_weapon_id: u32,
-}
 
 struct GameContext {
     world: WorldState,
@@ -172,7 +106,7 @@ impl GameContext {
                 .iter()
                 .find(|(_, unit)| unit.pos == self.cursor.get_pos())
             {
-                let dijkstra_map = DijkstraMap::new(&self.world.map, unit);
+                let dijkstra_map = DijkstraMap::new(&self.world.map, unit, &self.world.units);
                 return Transition::to_player_move(*id, dijkstra_map);
             }
         }
@@ -183,12 +117,16 @@ impl GameContext {
         if self.controller.button_state().buttons.contains(Buttons::A)
             && !self.controller.last_state().buttons.contains(Buttons::A)
         {
-            if let Some(point) = &dijkstra_map
+            if dijkstra_map
                 .get_reachables()
-                .iter()
-                .find(|pt| **pt == self.cursor.get_pos())
+                .contains(&self.cursor.get_pos())
+                && !self
+                    .world
+                    .units
+                    .values()
+                    .any(|unit| unit.pos == self.cursor.get_pos())
             {
-                let path = dijkstra_map.get_path(**point);
+                let path = dijkstra_map.get_path(self.cursor.get_pos());
                 return Transition::to_player_action(id, path);
             }
         }
@@ -216,7 +154,7 @@ impl GameContext {
     }
 
     fn move_animation(&mut self, timer: &mut f32, id: UnitId, path: &mut Vec<Point>) -> Transition {
-        if *timer >= 1.0 {
+        if *timer >= 0.2 {
             match path.pop() {
                 Some(pos) => {
                     *timer = 0.0;
@@ -237,40 +175,43 @@ pub struct Engine {
     game_context: GameContext,
 }
 
+const UNITS: [(u32, Faction, i32, (i32, i32), &str); 3] = [
+    (5, Faction::Player, 10, (4, 3), "unit1.png"),
+    (7, Faction::Player, 20, (5, 6), "unit1.png"),
+    (5, Faction::Enemy, 15, (4, 5), "mage1.png"),
+];
 impl Engine {
     pub fn new(map: Map, render_context: RenderContext) -> Self {
-        let mut units = HashMap::new();
-        let unit = Unit {
-            id: UnitId::new(0),
-            movement: 5,
-            faction: Faction::Player,
-            health: 10,
-            pos: (4, 3).into(),
-            render_pos: None,
-            texture_handle: render_context.texture_store.get_key("unit1.png"),
-            weapon: None,
-        };
-        units.insert(UnitId(0), unit);
+        let mut units = Vec::new();
+        UNITS
+            .iter()
+            .for_each(|(movement, faction, health, pos, texture)| {
+                units.push(Unit {
+                    movement: *movement,
+                    faction: *faction,
+                    health: *health,
+                    pos: (*pos).into(),
+                    render_pos: None,
+                    texture_handle: render_context.texture_store.get_key(&texture),
+                    weapon: None,
+                })
+            });
 
-        Self {
+        let mut engine = Self {
             state_machine: StateMachine::new(),
             game_context: GameContext {
-                world: WorldState {
-                    map,
-                    units,
-                    timer: 0.0,
-                    next_unit_id: 1,
-                    next_weapon_id: 0,
-                },
+                world: WorldState::new(map),
                 render_context,
                 controller: Controller::new(),
                 cursor: Cursor::new(),
             },
-        }
+        };
+        engine.game_context.world.spawn_units(&units);
+
+        engine
     }
 
     pub fn update(&mut self) {
-        warn!("{:#?}", &self.state_machine);
         self.game_context.update(&mut self.state_machine);
     }
 

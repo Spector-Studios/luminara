@@ -1,9 +1,10 @@
-use std::collections::BinaryHeap;
+use crate::map::Map;
+use crate::unit::Unit;
+use crate::unit::UnitId;
+
+use std::collections::{BinaryHeap, HashMap};
 
 use bracket_pathfinding::prelude::{Algorithm2D, Point};
-
-use crate::game::Unit;
-use crate::map::Map;
 
 #[derive(Debug)]
 pub struct DijkstraMap {
@@ -22,14 +23,14 @@ impl DijkstraMap {
         Point::constant(-1, 0),
     ];
 
-    pub fn new(map: &Map, unit: &Unit) -> Self {
+    pub fn new(map: &Map, target: &Unit, units: &HashMap<UnitId, Unit>) -> Self {
         let mut dijkstra_map = vec![Self::UNREACHABLE; map.width * map.height];
         let mut heap = BinaryHeap::new();
         let mut reachables = Vec::new();
 
-        dijkstra_map[map.point2d_to_index(unit.pos)] = 0;
+        dijkstra_map[map.point2d_to_index(target.pos)] = 0;
         heap.push(Node {
-            pos: unit.pos,
+            pos: target.pos,
             dist: 0,
         });
 
@@ -37,7 +38,7 @@ impl DijkstraMap {
             if dist > dijkstra_map[map.point2d_to_index(pos)] {
                 continue;
             }
-            if dist > unit.movement {
+            if dist > target.movement {
                 continue;
             }
 
@@ -50,7 +51,14 @@ impl DijkstraMap {
                     continue;
                 }
 
-                let move_cost = unit.get_movement_cost(map.get_terrain(npos));
+                if units
+                    .values()
+                    .any(|unit| unit.faction != target.faction && unit.pos == npos)
+                {
+                    continue;
+                }
+
+                let move_cost = target.get_movement_cost(map.get_terrain(npos));
                 if move_cost == Self::UNREACHABLE {
                     continue;
                 }
@@ -59,7 +67,7 @@ impl DijkstraMap {
                 let next_idx = map.point2d_to_index(npos);
                 let prev_dist = dijkstra_map[next_idx];
 
-                if next_dist <= unit.movement
+                if next_dist <= target.movement
                     && (prev_dist == Self::UNREACHABLE || next_dist < prev_dist)
                 {
                     dijkstra_map[map.point2d_to_index(npos)] = next_dist;
@@ -74,7 +82,7 @@ impl DijkstraMap {
         DijkstraMap {
             reachables,
             dijkstra_map,
-            max_distance: unit.movement,
+            max_distance: target.movement,
             width: map.width,
             heigth: map.height,
         }

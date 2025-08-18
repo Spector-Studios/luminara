@@ -1,11 +1,12 @@
 use crate::Map;
+
 use bracket_pathfinding::prelude::Point;
 use input_lib::ButtonState;
 use input_lib::Controller;
 use macroquad::prelude::get_frame_time;
 
 const INITIAL_DELAY: f32 = 0.25;
-const REPEAT_DELAY: f32 = 0.10;
+const REPEAT_DELAY: f32 = 0.06;
 
 pub struct Cursor {
     pos: Point,
