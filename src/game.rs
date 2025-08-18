@@ -131,6 +131,10 @@ impl GameContext {
             }
         }
 
+        if self.controller.button_state().buttons.contains(Buttons::B) {
+            return Transition::to_player_select();
+        }
+
         Transition::Stay
     }
 
