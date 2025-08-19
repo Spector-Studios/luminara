@@ -109,4 +109,8 @@ impl Transition {
     pub fn to_player_select() -> Self {
         Self::Switch(vec![GameState::Player(PlayerState::SelectUnit)])
     }
+
+    pub fn to_enemy_turn() -> Self {
+        Self::Switch(vec![GameState::Enemy(EnemyState::Manager)])
+    }
 }

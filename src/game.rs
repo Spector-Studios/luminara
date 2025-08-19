@@ -8,8 +8,6 @@ use crate::unit::UnitId;
 use crate::world::Faction;
 use crate::world::WorldState;
 
-use std::collections::HashMap;
-
 use bracket_pathfinding::prelude::*;
 use input_lib::Buttons;
 use input_lib::Controller;
@@ -23,6 +21,15 @@ struct GameContext {
 }
 
 impl GameContext {
+    pub fn new(map: Map, render_context: RenderContext) -> Self {
+        Self {
+            world: WorldState::new(map),
+            render_context,
+            controller: Controller::new(),
+            cursor: Cursor::new(),
+        }
+    }
+
     pub fn update(&mut self, state_machine: &mut StateMachine) {
         // INFO Pre Update
         self.controller.update();
@@ -31,7 +38,7 @@ impl GameContext {
         // INFO This part causes problems with dense Engine struct
         let transition = match state_machine.current_state_mut() {
             GameState::Player(player_state) => self.update_player(player_state),
-            GameState::Enemy(enemy_state) => todo!(),
+            GameState::Enemy(enemy_state) => self.update_enemy(enemy_state),
             GameState::Animation { timer, a_state } => self.update_animation(timer, a_state),
         };
 
@@ -41,13 +48,13 @@ impl GameContext {
         self.render_context.update(self.cursor.get_pos());
     }
 
-    pub fn render(&self, state_machine: &StateMachine) {
+    pub fn render(&self, game_state: &GameState) {
         self.controller.draw(None);
 
         // INFO Map
         self.render_context.render_map(&self.world.map);
 
-        match state_machine.current_state() {
+        match game_state {
             GameState::Player(player_state) => {}
             GameState::Enemy(enemy_state) => {}
             GameState::Animation { timer, a_state } => {}
@@ -56,9 +63,7 @@ impl GameContext {
         self.render_all_units(None);
 
         // INFO Move tiles
-        if let GameState::Player(PlayerState::MoveUnit { id, dijkstra_map }) =
-            state_machine.current_state()
-        {
+        if let GameState::Player(PlayerState::MoveUnit { id, dijkstra_map }) = game_state {
             for point in dijkstra_map
                 .get_reachables()
                 .iter()
@@ -70,19 +75,32 @@ impl GameContext {
         }
 
         // INFO Cursor
-        self.render_context
-            .render_tile_rectangle(self.cursor.get_pos(), RED);
+        if matches!(game_state, GameState::Player(..)) {
+            self.render_context
+                .render_tile_rectangle(self.cursor.get_pos(), RED);
+        }
     }
 
     pub fn update_player(&mut self, player_state: &mut PlayerState) -> Transition {
         self.cursor.update(&self.controller, &self.world.map);
+
+        if self.world.available_units.is_empty() {
+            self.world.setup_turn(Faction::Enemy);
+            return Transition::to_enemy_turn();
+        }
+
         let transition = match player_state {
             PlayerState::SelectUnit => self.player_select_unit(),
             PlayerState::MoveUnit { id, dijkstra_map } => self.player_move_unit(*id, dijkstra_map),
-            PlayerState::Action(unit_id) => self.player_action_unit(),
+            PlayerState::Action(unit_id) => self.player_action_unit(unit_id),
         };
 
         transition
+    }
+
+    // TODO
+    pub fn update_enemy(&mut self, enemy_state: &mut EnemyState) -> Transition {
+        Transition::Stay
     }
 
     fn render_all_units(&self, except: Option<UnitId>) {
@@ -104,6 +122,7 @@ impl GameContext {
                 .world
                 .units
                 .iter()
+                .filter(|(id, _)| self.world.available_units.contains(id))
                 .find(|(_, unit)| unit.pos == self.cursor.get_pos())
             {
                 let dijkstra_map = DijkstraMap::new(&self.world.map, unit, &self.world.units);
@@ -138,7 +157,9 @@ impl GameContext {
         Transition::Stay
     }
 
-    fn player_action_unit(&mut self) -> Transition {
+    // TODO
+    fn player_action_unit(&mut self, id: &mut UnitId) -> Transition {
+        assert!(self.world.available_units.remove(id));
         Transition::to_player_select()
     }
 
@@ -203,14 +224,10 @@ impl Engine {
 
         let mut engine = Self {
             state_machine: StateMachine::new(),
-            game_context: GameContext {
-                world: WorldState::new(map),
-                render_context,
-                controller: Controller::new(),
-                cursor: Cursor::new(),
-            },
+            game_context: GameContext::new(map, render_context),
         };
         engine.game_context.world.spawn_units(&units);
+        engine.game_context.world.setup_turn(Faction::Player);
 
         engine
     }
@@ -220,6 +237,7 @@ impl Engine {
     }
 
     pub fn render(&self) {
-        self.game_context.render(&self.state_machine);
+        self.game_context
+            .render(&self.state_machine.current_state());
     }
 }
