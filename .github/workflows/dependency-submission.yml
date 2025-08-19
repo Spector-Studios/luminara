@@ -6,7 +6,7 @@ on:
     paths:
       - '**.gradle.*'
       - 'app/**/*'
-      - 'gradle/**/*
+      - 'gradle/**/*'
 
 permissions:
   contents: write
