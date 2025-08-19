@@ -12,6 +12,7 @@ use bracket_pathfinding::prelude::*;
 use input_lib::Buttons;
 use input_lib::Controller;
 use macroquad::prelude::*;
+use macroquad::rand::ChooseRandom;
 
 struct GameContext {
     world: WorldState,
@@ -86,7 +87,7 @@ impl GameContext {
 
         if self.world.available_units.is_empty() {
             self.world.setup_turn(Faction::Enemy);
-            return Transition::to_enemy_turn();
+            return Transition::to_enemy_manager();
         }
 
         let transition = match player_state {
@@ -100,7 +101,36 @@ impl GameContext {
 
     // TODO
     pub fn update_enemy(&mut self, enemy_state: &mut EnemyState) -> Transition {
-        Transition::Stay
+        let transition = match enemy_state {
+            EnemyState::Manager => self.enemy_turn_manager(),
+            EnemyState::Move { id, dijkstra_map } => self.enemy_move_unit(*id, dijkstra_map),
+            EnemyState::Action(unit_id) => self.enemy_action(*unit_id),
+        };
+
+        transition
+    }
+
+    fn enemy_turn_manager(&mut self) -> Transition {
+        if let Some(id) = self.world.available_units.pop() {
+            let dijkstra_map = DijkstraMap::new(
+                &self.world.map,
+                self.world.units.get(&id).unwrap(),
+                &self.world.units,
+            );
+            return Transition::to_enemy_move(id, dijkstra_map);
+        } else {
+            self.world.setup_turn(Faction::Player);
+            return Transition::to_player_select();
+        }
+    }
+
+    fn enemy_move_unit(&mut self, id: UnitId, dijkstra_map: &mut DijkstraMap) -> Transition {
+        let target = dijkstra_map.get_reachables().choose().unwrap();
+        Transition::to_enemy_action(id, dijkstra_map.get_path(*target))
+    }
+
+    fn enemy_action(&mut self, id: UnitId) -> Transition {
+        Transition::to_enemy_manager()
     }
 
     fn render_all_units(&self, except: Option<UnitId>) {
@@ -122,7 +152,7 @@ impl GameContext {
                 .world
                 .units
                 .iter()
-                .filter(|(id, _)| self.world.available_units.contains(id))
+                .filter(|(id, _)| self.world.available_units.contains(*id))
                 .find(|(_, unit)| unit.pos == self.cursor.get_pos())
             {
                 let dijkstra_map = DijkstraMap::new(&self.world.map, unit, &self.world.units);

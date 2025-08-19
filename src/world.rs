@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
 
+use indexmap::IndexSet;
+
 use crate::Map;
 use crate::unit::Unit;
 use crate::unit::UnitId;
@@ -8,7 +10,7 @@ use crate::unit::UnitId;
 // TODO Make a builder for this
 pub struct WorldState {
     pub units: HashMap<UnitId, Unit>,
-    pub available_units: HashSet<UnitId>,
+    pub available_units: IndexSet<UnitId>,
     pub map: Map,
     next_unit_id: UnitId,
 }
@@ -17,7 +19,7 @@ impl WorldState {
     pub fn new(map: Map) -> Self {
         Self {
             units: HashMap::with_capacity(20),
-            available_units: HashSet::with_capacity(10),
+            available_units: IndexSet::with_capacity(10),
             map,
             next_unit_id: UnitId::new(0),
         }

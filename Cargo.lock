@@ -235,6 +235,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "indexmap"
+version = "2.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fe4cd85333e22411419a0bcae1297d25e58c9443848b11dc6a86fefe8c78a661"
+dependencies = [
+ "equivalent",
+ "hashbrown",
+]
+
+[[package]]
 name = "input_lib"
 version = "0.1.0"
 dependencies = [
@@ -255,6 +265,7 @@ version = "0.1.0"
 dependencies = [
  "arrayvec",
  "bracket-pathfinding",
+ "indexmap",
  "input_lib",
  "macroquad",
 ]

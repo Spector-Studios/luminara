@@ -67,9 +67,9 @@ pub enum EnemyState {
     Manager,
     Move {
         id: UnitId,
-        valid_tiles: DijkstraMap,
+        dijkstra_map: DijkstraMap,
     },
-    Attack(UnitId),
+    Action(UnitId),
 }
 
 #[derive(Clone, Debug)]
@@ -110,7 +110,24 @@ impl Transition {
         Self::Switch(vec![GameState::Player(PlayerState::SelectUnit)])
     }
 
-    pub fn to_enemy_turn() -> Self {
+    pub fn to_enemy_manager() -> Self {
         Self::Switch(vec![GameState::Enemy(EnemyState::Manager)])
+    }
+
+    pub fn to_enemy_move(id: UnitId, dijkstra_map: DijkstraMap) -> Self {
+        Self::Switch(vec![GameState::Enemy(EnemyState::Move {
+            id,
+            dijkstra_map: dijkstra_map,
+        })])
+    }
+
+    pub fn to_enemy_action(id: UnitId, path: Vec<Point>) -> Self {
+        Self::Switch(vec![
+            GameState::Enemy(EnemyState::Action(id)),
+            GameState::Animation {
+                timer: 0.0,
+                a_state: AnimationState::Move { unit: id, path },
+            },
+        ])
     }
 }
