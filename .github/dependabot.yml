@@ -12,7 +12,7 @@ updates:
     schedule:
       interval: "weekly"
 
-  - package-ecosyste: "gradle"
+  - package-ecosystem: "gradle"
     directories:
       - "/"
       - "/app/**/*"
