@@ -3,6 +3,10 @@ name: Dependency Submission
 on:
   push:
     branches: [ 'main' ]
+    paths:
+      - '**.gradle.*'
+      - 'app/**/*'
+      - 'gradle/**/*
 
 permissions:
   contents: write
