@@ -61,7 +61,7 @@ impl GameContext {
             GameState::Animation { timer, a_state } => {}
         }
         // INFO Units
-        self.render_all_units(None);
+        self.render_context.render_units(self.world.units.values());
 
         // INFO Move tiles
         if let GameState::Player(PlayerState::MoveUnit { id, dijkstra_map }) = game_state {
@@ -78,7 +78,7 @@ impl GameContext {
         // INFO Cursor
         if matches!(game_state, GameState::Player(..)) {
             self.render_context
-                .render_sprite(self.cursor.get_pos(), self.cursor.texture);
+                .render_sprite(self.cursor.get_pos(), self.cursor.texture, 1.2);
         }
     }
 
@@ -131,18 +131,6 @@ impl GameContext {
 
     fn enemy_action(&mut self, id: UnitId) -> Transition {
         Transition::to_enemy_manager()
-    }
-
-    fn render_all_units(&self, except: Option<UnitId>) {
-        self.world
-            .units
-            .iter()
-            .filter(|(_, unit)| self.render_context.map_view_rect().point_in_rect(unit.pos))
-            .filter(|(id, _)| except.is_none_or(|except_id| except_id != **id))
-            .for_each(|(_, unit)| {
-                self.render_context
-                    .render_sprite(unit.pos, unit.texture_handle);
-            });
     }
 
     fn player_select_unit(&mut self) -> Transition {
@@ -230,9 +218,10 @@ pub struct Engine {
     game_context: GameContext,
 }
 
-const UNITS: [(u32, Faction, i32, (i32, i32), &str); 3] = [
+const UNITS: [(u32, Faction, i32, (i32, i32), &str); 4] = [
     (5, Faction::Player, 10, (4, 3), "unit1.png"),
     (7, Faction::Player, 20, (5, 6), "unit1.png"),
+    (7, Faction::Player, 20, (4, 6), "unit1.png"),
     (5, Faction::Enemy, 15, (4, 5), "mage1.png"),
 ];
 impl Engine {
@@ -244,7 +233,8 @@ impl Engine {
                 units.push(Unit {
                     movement: *movement,
                     faction: *faction,
-                    health: *health,
+                    curr_health: *health,
+                    max_health: *health,
                     pos: (*pos).into(),
                     render_pos: None,
                     texture_handle: render_context.texture_store.get_key(&texture),

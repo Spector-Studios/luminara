@@ -44,7 +44,7 @@ pub async fn main() {
 
     texture_store.update().await;
 
-    let map = Map::filled(80, 40, grass, forest);
+    let map = Map::filled(30, 20, grass, forest);
     let render_context = RenderContext::new(
         texture_store,
         map.width.try_into().unwrap(),

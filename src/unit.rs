@@ -13,7 +13,8 @@ use macroquad::prelude::Vec2;
 pub struct Unit {
     pub movement: u32,
     pub faction: Faction,
-    pub health: i32,
+    pub curr_health: i32,
+    pub max_health: i32,
     pub pos: Point,
     pub render_pos: Option<Vec2>,
     pub texture_handle: TextureHandle,

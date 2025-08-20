@@ -1,5 +1,6 @@
 use crate::math::Point;
 use crate::math::Rect;
+use crate::unit::Unit;
 use crate::{
     assets::{TextureHandle, TextureStore},
     map::Map,
@@ -68,19 +69,37 @@ impl RenderContext {
 
     pub fn render_map(&self, map: &Map) {
         self.view_rect.for_each(|pt| {
-            self.render_sprite(pt, map.get_texture_handle(pt));
+            self.render_sprite(pt, map.get_texture_handle(pt), 1.0);
         });
     }
 
-    pub fn render_sprite(&self, pos: impl Into<Point>, texture_handle: TextureHandle) {
+    pub fn render_sprite(&self, pos: impl Into<Point>, texture_handle: TextureHandle, scale: f32) {
         let texture = self.texture_store.get(texture_handle);
-        let (x, y) = self.screen_pos(pos);
+
+        // TODO Rewrite this
+        let (mut x, mut y) = self.screen_pos(pos);
+        let padding = ((1.0 - scale) / 2.0) * self.tile_size;
+        (x, y) = (x + padding, y + padding);
         let params = DrawTextureParams {
-            dest_size: Some(vec2(self.tile_size, self.tile_size)),
+            dest_size: Some(vec2(self.tile_size * scale, self.tile_size * scale)),
             ..Default::default()
         };
 
         draw_texture_ex(texture, x, y, WHITE, params);
+    }
+
+    pub fn render_units<'a>(&self, units: impl Iterator<Item = &'a Unit>) {
+        units
+            .filter(|unit| self.view_rect.point_in_rect(unit.pos))
+            .for_each(|unit| {
+                self.render_sprite(unit.pos, unit.texture_handle, 1.0);
+
+                let (x, y) = self.screen_pos(unit.pos);
+                let (w, h) = (self.tile_size * 0.9, self.tile_size * 0.2);
+                let health_frac = (unit.curr_health as f32) / (unit.max_health as f32);
+                draw_rectangle(x, y + self.tile_size, w, h, GRAY);
+                draw_rectangle(x, y + self.tile_size, w * health_frac, h, RED);
+            });
     }
 
     pub fn render_tile_rectangle(&self, pos: impl Into<Point>, color: Color) {
