@@ -2,6 +2,7 @@ mod assets;
 mod cursor;
 mod game;
 mod map;
+mod math;
 mod pathfinding;
 mod render;
 mod state;

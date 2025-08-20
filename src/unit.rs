@@ -1,12 +1,12 @@
 use crate::assets::TextureHandle;
 use crate::map::Terrain;
+use crate::math::Point;
 use crate::pathfinding::DijkstraMap;
 use crate::world::Faction;
 
 use std::ops::Deref;
 use std::ops::DerefMut;
 
-use bracket_pathfinding::prelude::Point;
 use macroquad::prelude::Vec2;
 
 #[derive(Clone, Copy, Debug)]

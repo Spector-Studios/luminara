@@ -1,8 +1,8 @@
+use crate::math::Point;
 use crate::pathfinding::DijkstraMap;
 use crate::unit::UnitId;
 
 use arrayvec::ArrayVec;
-use bracket_pathfinding::prelude::Point;
 
 const STACK_DEPTH: usize = 5;
 

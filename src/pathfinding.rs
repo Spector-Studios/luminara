@@ -1,10 +1,9 @@
 use crate::map::Map;
+use crate::math::Point;
 use crate::unit::Unit;
 use crate::unit::UnitId;
 
 use std::collections::{BinaryHeap, HashMap};
-
-use bracket_pathfinding::prelude::{Algorithm2D, Point};
 
 #[derive(Debug)]
 pub struct DijkstraMap {
@@ -17,10 +16,10 @@ pub struct DijkstraMap {
 impl DijkstraMap {
     pub const UNREACHABLE: u32 = u32::MAX;
     const DIRS: [Point; 4] = [
-        Point::constant(0, 1),
-        Point::constant(0, -1),
-        Point::constant(1, 0),
-        Point::constant(-1, 0),
+        Point::new(0, 1),
+        Point::new(0, -1),
+        Point::new(1, 0),
+        Point::new(-1, 0),
     ];
 
     pub fn new(map: &Map, target: &Unit, units: &HashMap<UnitId, Unit>) -> Self {
@@ -28,14 +27,14 @@ impl DijkstraMap {
         let mut heap = BinaryHeap::new();
         let mut reachables = Vec::new();
 
-        dijkstra_map[map.point2d_to_index(target.pos)] = 0;
+        dijkstra_map[map.point_to_idx(target.pos)] = 0;
         heap.push(Node {
             pos: target.pos,
             dist: 0,
         });
 
         while let Some(Node { pos, dist }) = heap.pop() {
-            if dist > dijkstra_map[map.point2d_to_index(pos)] {
+            if dist > dijkstra_map[map.point_to_idx(pos)] {
                 continue;
             }
             if dist > target.movement {
@@ -64,13 +63,13 @@ impl DijkstraMap {
                 }
 
                 let next_dist = dist.saturating_add(move_cost);
-                let next_idx = map.point2d_to_index(npos);
+                let next_idx = map.point_to_idx(npos);
                 let prev_dist = dijkstra_map[next_idx];
 
                 if next_dist <= target.movement
                     && (prev_dist == Self::UNREACHABLE || next_dist < prev_dist)
                 {
-                    dijkstra_map[map.point2d_to_index(npos)] = next_dist;
+                    dijkstra_map[map.point_to_idx(npos)] = next_dist;
                     heap.push(Node {
                         pos: npos,
                         dist: next_dist,

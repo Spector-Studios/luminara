@@ -1,6 +1,6 @@
 use crate::Map;
+use crate::math::Point;
 
-use bracket_pathfinding::prelude::Point;
 use input_lib::ButtonState;
 use input_lib::Controller;
 use macroquad::prelude::get_frame_time;
@@ -27,6 +27,8 @@ impl Cursor {
 
     fn shift(&mut self, delta: impl Into<Point>, map: &Map) {
         self.pos += delta.into();
+
+        // TODO Implement Ord on Point to make this one line
         self.pos.x = self.pos.x.clamp(0, (map.width - 1).try_into().unwrap());
         self.pos.y = self.pos.y.clamp(0, (map.height - 1).try_into().unwrap());
     }

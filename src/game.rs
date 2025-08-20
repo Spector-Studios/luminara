@@ -1,5 +1,6 @@
 use crate::cursor::Cursor;
 use crate::map::*;
+use crate::math::*;
 use crate::pathfinding::DijkstraMap;
 use crate::render::RenderContext;
 use crate::state::*;
@@ -8,7 +9,6 @@ use crate::unit::UnitId;
 use crate::world::Faction;
 use crate::world::WorldState;
 
-use bracket_pathfinding::prelude::*;
 use input_lib::Buttons;
 use input_lib::Controller;
 use macroquad::prelude::*;
@@ -189,7 +189,7 @@ impl GameContext {
 
     // TODO
     fn player_action_unit(&mut self, id: &mut UnitId) -> Transition {
-        assert!(self.world.available_units.remove(id));
+        assert!(self.world.available_units.swap_remove(id));
         Transition::to_player_select()
     }
 

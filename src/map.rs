@@ -1,6 +1,7 @@
 use crate::assets::TextureHandle;
+use crate::math::Point;
+use crate::math::Rect;
 
-use bracket_pathfinding::prelude::{Algorithm2D, BaseMap, Point};
 use macroquad::rand::ChooseRandom;
 
 pub struct Map {
@@ -46,27 +47,33 @@ impl Map {
     }
 
     pub fn get(&self, pos: impl Into<Point>) -> TileType {
-        *self.tiles.get(self.point2d_to_index(pos.into())).unwrap()
+        *self.tiles.get(self.point_to_idx(pos.into())).unwrap()
     }
 
     pub fn get_terrain(&self, pos: impl Into<Point>) -> Terrain {
-        *self.terrain.get(self.point2d_to_index(pos.into())).unwrap()
+        *self.terrain.get(self.point_to_idx(pos.into())).unwrap()
     }
 
     pub fn get_texture_handle(&self, pos: impl Into<Point>) -> TextureHandle {
-        *self
-            .textures
-            .get(self.point2d_to_index(pos.into()))
-            .unwrap()
+        *self.textures.get(self.point_to_idx(pos.into())).unwrap()
     }
-}
 
-impl Algorithm2D for Map {
-    fn dimensions(&self) -> Point {
-        (self.width as i32, self.height as i32).into()
+    pub fn point_to_idx(&self, point: Point) -> usize {
+        let (x, y) = (point.x, point.y);
+        (TryInto::<usize>::try_into(y).unwrap() * self.width)
+            + TryInto::<usize>::try_into(x).unwrap()
+    }
+
+    pub fn in_bounds(&self, pt: Point) -> bool {
+        let map_rect = Rect::with_size(
+            0,
+            0,
+            self.width.try_into().unwrap(),
+            self.height.try_into().unwrap(),
+        );
+        map_rect.point_in_rect(pt)
     }
 }
-impl BaseMap for Map {}
 
 #[derive(Clone, Copy, Debug)]
 pub enum TileType {

@@ -1,9 +1,10 @@
+use crate::math::Point;
+use crate::math::Rect;
 use crate::{
     assets::{TextureHandle, TextureStore},
     map::Map,
 };
 
-use bracket_pathfinding::prelude::{Point, Rect};
 use macroquad::prelude::vec2;
 use macroquad::prelude::*;
 
@@ -42,26 +43,21 @@ impl RenderContext {
         const MARGIN: i32 = 2;
         let cursor_pos = cursor_pos.into();
 
-        if self.view_rect.x1 > cursor_pos.x - MARGIN {
-            self.view_rect.x1 -= 1
-        } else if self.view_rect.x2 < cursor_pos.x + MARGIN + 1 {
-            self.view_rect.x1 += 1
+        if self.view_rect.x > cursor_pos.x - MARGIN {
+            self.view_rect.x -= 1
+        } else if self.view_rect.x + self.view_rect.w < cursor_pos.x + MARGIN + 1 {
+            self.view_rect.x += 1
         }
-        if self.view_rect.y1 > cursor_pos.y - MARGIN {
-            self.view_rect.y1 -= 1
-        } else if self.view_rect.y2 < cursor_pos.y + MARGIN + 1 {
-            self.view_rect.y1 += 1
+        if self.view_rect.y > cursor_pos.y - MARGIN {
+            self.view_rect.y -= 1
+        } else if self.view_rect.y + self.view_rect.h < cursor_pos.y + MARGIN + 1 {
+            self.view_rect.y += 1
         }
 
-        self.view_rect.x1 = self.view_rect.x1.clamp(0, self.map_width - VIEWPORT_WIDTH);
-        self.view_rect.y1 = self
-            .view_rect
-            .y1
-            .clamp(0, self.map_height - VIEWPORT_HEIGHT);
+        self.view_rect.x = self.view_rect.x.clamp(0, self.map_width - VIEWPORT_WIDTH);
+        self.view_rect.y = self.view_rect.y.clamp(0, self.map_height - VIEWPORT_HEIGHT);
 
         // INFO May be make a Rect.translate() method?
-        self.view_rect.x2 = self.view_rect.x1 + VIEWPORT_WIDTH;
-        self.view_rect.y2 = self.view_rect.y1 + VIEWPORT_HEIGHT;
 
         self.tile_size = (screen_width() * 0.99) / VIEWPORT_WIDTH as f32;
         self.offset_x = (screen_width() - (screen_width() * 0.99)) / 2.0;
@@ -125,10 +121,10 @@ impl RenderContext {
     }
 
     fn screen_x(&self, tile_x: i32) -> f32 {
-        ((tile_x - self.view_rect.x1) as f32) * self.tile_size + self.offset_x
+        ((tile_x - self.view_rect.x) as f32) * self.tile_size + self.offset_x
     }
 
     fn screen_y(&self, tile_y: i32) -> f32 {
-        ((tile_y - self.view_rect.y1) as f32) * self.tile_size + self.offset_y
+        ((tile_y - self.view_rect.y) as f32) * self.tile_size + self.offset_y
     }
 }
