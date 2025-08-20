@@ -1,4 +1,5 @@
 use crate::Map;
+use crate::assets::TextureHandle;
 use crate::math::Point;
 
 use input_lib::ButtonState;
@@ -11,13 +12,15 @@ const REPEAT_DELAY: f32 = 0.06;
 pub struct Cursor {
     pos: Point,
     timer: f32,
+    pub texture: TextureHandle,
 }
 
 impl Cursor {
-    pub fn new() -> Self {
+    pub fn new(texture: TextureHandle) -> Self {
         Self {
             pos: Point::zero(),
             timer: 0.0,
+            texture,
         }
     }
 

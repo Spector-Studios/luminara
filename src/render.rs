@@ -57,8 +57,6 @@ impl RenderContext {
         self.view_rect.x = self.view_rect.x.clamp(0, self.map_width - VIEWPORT_WIDTH);
         self.view_rect.y = self.view_rect.y.clamp(0, self.map_height - VIEWPORT_HEIGHT);
 
-        // INFO May be make a Rect.translate() method?
-
         self.tile_size = (screen_width() * 0.99) / VIEWPORT_WIDTH as f32;
         self.offset_x = (screen_width() - (screen_width() * 0.99)) / 2.0;
         self.offset_y = (screen_height() - (screen_height() * 0.7)) / 2.0;
@@ -69,28 +67,8 @@ impl RenderContext {
     }
 
     pub fn render_map(&self, map: &Map) {
-        let params = DrawTextureParams {
-            dest_size: Some(vec2(self.tile_size, self.tile_size)),
-            ..Default::default()
-        };
         self.view_rect.for_each(|pt| {
-            let texture = self.texture_store.get(map.get_texture_handle(pt));
-
-            draw_texture_ex(
-                texture,
-                self.screen_x(pt.x),
-                self.screen_y(pt.y),
-                WHITE,
-                params.clone(),
-            );
-            draw_rectangle_lines(
-                self.screen_x(pt.x),
-                self.screen_y(pt.y),
-                self.tile_size,
-                self.tile_size,
-                5.0,
-                BLACK,
-            );
+            self.render_sprite(pt, map.get_texture_handle(pt));
         });
     }
 

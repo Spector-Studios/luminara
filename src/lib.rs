@@ -40,6 +40,7 @@ pub async fn main() {
     let forest = texture_store.load("forest1.png");
     let _ = texture_store.load("unit1.png");
     let _ = texture_store.load("mage1.png");
+    let _ = texture_store.load("cursor.png");
 
     texture_store.update().await;
 

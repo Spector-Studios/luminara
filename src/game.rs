@@ -25,9 +25,9 @@ impl GameContext {
     pub fn new(map: Map, render_context: RenderContext) -> Self {
         Self {
             world: WorldState::new(map),
-            render_context,
             controller: Controller::new(),
-            cursor: Cursor::new(),
+            cursor: Cursor::new(render_context.texture_store.get_key("cursor.png")),
+            render_context,
         }
     }
 
@@ -78,7 +78,7 @@ impl GameContext {
         // INFO Cursor
         if matches!(game_state, GameState::Player(..)) {
             self.render_context
-                .render_tile_rectangle(self.cursor.get_pos(), RED);
+                .render_sprite(self.cursor.get_pos(), self.cursor.texture);
         }
     }
 

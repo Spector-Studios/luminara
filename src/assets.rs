@@ -41,7 +41,8 @@ impl TextureStore {
             self.textures[handle.0] = texture;
         }
 
-        build_textures_atlas();
+        // INFO Creating Atlas causes blank lines between some map tiles
+        // build_textures_atlas();
     }
 
     pub fn get(&self, handle: TextureHandle) -> &Texture2D {
