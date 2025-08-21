@@ -142,6 +142,6 @@ val buildRustLibRelease by tasks.registering(Exec::class) {
 dependencies {
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.3.0")
-    androidTestImplementation("androidx.test:monitor:1.6.1")
+    androidTestImplementation("androidx.test:monitor:1.8.0")
     androidTestImplementation("junit:junit:4.13.2")
 }
