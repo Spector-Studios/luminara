@@ -1,3 +1,4 @@
 **/*.png
 **/*.ttf
 !local.properties
+Cargo.lock

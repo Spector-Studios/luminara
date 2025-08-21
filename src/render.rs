@@ -67,6 +67,13 @@ impl RenderContext {
         &self.view_rect
     }
 
+    pub fn view_size(&self) -> (f32, f32) {
+        (
+            VIEWPORT_WIDTH as f32 * self.tile_size,
+            VIEWPORT_HEIGHT as f32 * self.tile_size,
+        )
+    }
+
     pub fn render_map(&self, map: &Map) {
         self.view_rect.for_each(|pt| {
             self.render_sprite(pt, map.get_texture_handle(pt), 1.0);
@@ -123,5 +130,9 @@ impl RenderContext {
 
     fn screen_y(&self, tile_y: i32) -> f32 {
         ((tile_y - self.view_rect.y) as f32) * self.tile_size + self.offset_y
+    }
+
+    pub fn offsets(&self) -> (f32, f32) {
+        (self.offset_x, self.offset_y)
     }
 }

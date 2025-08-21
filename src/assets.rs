@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use macroquad::texture::{Texture2D, build_textures_atlas, load_texture};
+use macroquad::texture::{Texture2D, load_texture};
 
 #[derive(Clone, Copy, Debug)]
 pub struct TextureHandle(usize);

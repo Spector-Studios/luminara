@@ -6,6 +6,7 @@ mod math;
 mod pathfinding;
 mod render;
 mod state;
+mod ui;
 mod unit;
 mod world;
 
@@ -61,6 +62,8 @@ pub async fn main() {
 
         game.update();
         game.render();
+
+        draw_multiline_text("Test\nNew Line", 100.0, 100.0, 50.0, None, WHITE);
 
         next_frame().await
     }

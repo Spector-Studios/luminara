@@ -4,6 +4,7 @@ use crate::math::*;
 use crate::pathfinding::DijkstraMap;
 use crate::render::RenderContext;
 use crate::state::*;
+use crate::ui::UiState;
 use crate::unit::Unit;
 use crate::unit::UnitId;
 use crate::world::Faction;
@@ -17,6 +18,7 @@ use macroquad::rand::ChooseRandom;
 struct GameContext {
     world: WorldState,
     render_context: RenderContext,
+    ui: UiState,
     controller: Controller,
     cursor: Cursor,
 }
@@ -26,6 +28,7 @@ impl GameContext {
         Self {
             world: WorldState::new(map),
             controller: Controller::new(),
+            ui: UiState::empty(),
             cursor: Cursor::new(render_context.texture_store.get_key("cursor.png")),
             render_context,
         }
@@ -34,6 +37,9 @@ impl GameContext {
     pub fn update(&mut self, state_machine: &mut StateMachine) {
         // INFO Pre Update
         self.controller.update();
+
+        // INFO
+        self.ui.update(&self.controller.button_state());
 
         // INFO Update
         // INFO This part causes problems with dense Engine struct
@@ -56,29 +62,40 @@ impl GameContext {
         self.render_context.render_map(&self.world.map);
 
         match game_state {
-            GameState::Player(player_state) => {}
+            GameState::Player(player_state) => {
+                self.render_player_state(player_state);
+            }
             GameState::Enemy(enemy_state) => {}
             GameState::Animation { timer, a_state } => {}
         }
         // INFO Units
         self.render_context.render_units(self.world.units.values());
 
-        // INFO Move tiles
-        if let GameState::Player(PlayerState::MoveUnit { id, dijkstra_map }) = game_state {
-            for point in dijkstra_map
-                .get_reachables()
-                .iter()
-                .filter(|pt| self.render_context.in_bounds(**pt))
-            {
-                self.render_context
-                    .render_tile_rectangle(*point, Color::new(0.0, 0.0, 0.9, 0.5));
-            }
-        }
-
         // INFO Cursor
         if matches!(game_state, GameState::Player(..)) {
             self.render_context
                 .render_sprite(self.cursor.get_pos(), self.cursor.texture, 1.2);
+        }
+        self.ui.render(&self.render_context);
+    }
+
+    pub fn render_player_state(&self, p_state: &PlayerState) {
+        match p_state {
+            PlayerState::SelectUnit => {}
+            PlayerState::MoveUnit {
+                id: _,
+                dijkstra_map,
+            } => {
+                for point in dijkstra_map
+                    .get_reachables()
+                    .iter()
+                    .filter(|pt| self.render_context.in_bounds(**pt))
+                {
+                    self.render_context
+                        .render_tile_rectangle(*point, Color::new(0.0, 0.0, 0.9, 0.5));
+                }
+            }
+            PlayerState::Action(unit_id) => {}
         }
     }
 
@@ -150,7 +167,11 @@ impl GameContext {
         Transition::Stay
     }
 
-    fn player_move_unit(&mut self, id: UnitId, dijkstra_map: &mut DijkstraMap) -> Transition {
+    fn player_move_unit(
+        &mut self,
+        selected_id: UnitId,
+        dijkstra_map: &mut DijkstraMap,
+    ) -> Transition {
         if self.controller.button_state().buttons.contains(Buttons::A)
             && !self.controller.last_state().buttons.contains(Buttons::A)
         {
@@ -160,11 +181,13 @@ impl GameContext {
                 && !self
                     .world
                     .units
-                    .values()
-                    .any(|unit| unit.pos == self.cursor.get_pos())
+                    .iter()
+                    .filter(|(id, _)| **id != selected_id)
+                    .any(|(_, unit)| unit.pos == self.cursor.get_pos())
             {
+                self.ui = UiState::new();
                 let path = dijkstra_map.get_path(self.cursor.get_pos());
-                return Transition::to_player_action(id, path);
+                return Transition::to_player_action(selected_id, path);
             }
         }
 
@@ -177,8 +200,13 @@ impl GameContext {
 
     // TODO
     fn player_action_unit(&mut self, id: &mut UnitId) -> Transition {
-        assert!(self.world.available_units.swap_remove(id));
-        Transition::to_player_select()
+        if self.controller.button_state().buttons.contains(Buttons::A) {
+            self.ui = UiState::empty();
+            assert!(self.world.available_units.swap_remove(id));
+            return Transition::to_player_select();
+        }
+
+        Transition::Stay
     }
 
     pub fn update_animation(
