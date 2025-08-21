@@ -5,11 +5,10 @@
 
 version: 2
 
-assignees: Spector-Studios
-
 updates:
   - package-ecosystem: "cargo" # See documentation for possible values
     directory: "/" # Location of package manifests
+    assignees: Spector-Studios
     schedule:
       interval: "weekly"
 
