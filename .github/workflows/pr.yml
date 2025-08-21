@@ -48,7 +48,6 @@ jobs:
           ./sdkmanager "ndk;27.1.12297006"
 
       - name: Build APK's
-        env:
         run: ./gradlew assemble
 
       - name: Upload APK
