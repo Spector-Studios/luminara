@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
 
-use hecs::World;
 use indexmap::IndexSet;
 
 use crate::Map;
@@ -10,7 +9,6 @@ use crate::unit::UnitId;
 
 // TODO Make a builder for this
 pub struct WorldState {
-    world: World,
     pub units: HashMap<UnitId, Unit>,
     pub available_units: IndexSet<UnitId>, // TODO move this to individual units, may be also track by turn number?
     pub map: Map,
@@ -20,7 +18,6 @@ pub struct WorldState {
 impl WorldState {
     pub fn new(map: Map) -> Self {
         Self {
-            world: World::new(),
             units: HashMap::with_capacity(20),
             available_units: IndexSet::with_capacity(10),
             map,
