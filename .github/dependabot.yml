@@ -16,10 +16,12 @@ updates:
     directories:
       - "/"
       - "/app/**/*"
+    assignees: ["Spector-Studios"]
     schedule:
       interval: "weekly"
 
   - package-ecosystem: "github-actions"
     directory: "/"
+    assignees: ["Spector-Studios"]
     schedule:
       interval: "weekly"
