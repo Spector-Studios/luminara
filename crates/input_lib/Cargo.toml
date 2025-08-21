@@ -4,6 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-enumset = "1.1.6"
+enumset = "1.1.10"
 macroquad.workspace = true
 macroquad_ex_ui = { version = "0.1.0", path = "../macroquad_ex_ui" }
