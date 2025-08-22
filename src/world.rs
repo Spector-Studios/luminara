@@ -1,7 +1,4 @@
 use std::collections::HashMap;
-use std::collections::HashSet;
-
-use indexmap::IndexSet;
 
 use crate::Map;
 use crate::unit::Unit;
@@ -10,7 +7,6 @@ use crate::unit::UnitId;
 // TODO Make a builder for this
 pub struct WorldState {
     pub units: HashMap<UnitId, Unit>,
-    pub available_units: IndexSet<UnitId>, // TODO move this to individual units, may be also track by turn number?
     pub map: Map,
     next_unit_id: UnitId,
 }
@@ -19,7 +15,6 @@ impl WorldState {
     pub fn new(map: Map) -> Self {
         Self {
             units: HashMap::with_capacity(20),
-            available_units: IndexSet::with_capacity(10),
             map,
             next_unit_id: UnitId::new(0),
         }
@@ -32,14 +27,18 @@ impl WorldState {
         }
     }
 
-    pub fn setup_turn(&mut self, faction: Faction) {
-        self.available_units.clear();
+    pub fn setup_turn(&mut self) {
+        self.units.iter_mut().for_each(|(_, unit)| {
+            unit.turn_complete = false;
+        });
+    }
+
+    pub fn get_unmoved_unit(&self, faction: Faction) -> Option<&UnitId> {
         self.units
             .iter()
             .filter(|(_, unit)| unit.faction == faction)
-            .for_each(|(id, _)| {
-                self.available_units.insert(*id);
-            });
+            .find(|(_, unit)| unit.turn_complete == false)
+            .map(|(id, _)| id)
     }
 }
 

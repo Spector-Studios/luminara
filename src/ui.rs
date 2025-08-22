@@ -7,41 +7,48 @@ use macroquad::{
 
 use crate::render::RenderContext;
 
-pub struct UiState {
-    menu: Option<Menu>,
-}
+// pub struct UiState {
+//     pub menu: Option<Menu>,
+// }
 
-impl UiState {
-    pub fn empty() -> Self {
-        Self { menu: None }
-    }
-    pub fn new() -> Self {
-        Self {
-            menu: Some(Menu {
-                items: vec![MenuItem::wait(), MenuItem::attack()],
-                selected: 0,
-            }),
-        }
-    }
-    pub fn update(&mut self, input: &ButtonState) {
-        if let Some(menu) = &mut self.menu {
-            menu.update(input);
-        }
-    }
+// impl UiState {
+//     pub fn empty() -> Self {
+//         Self { menu: None }
+//     }
+//     pub fn new() -> Self {
+//         Self {
+//             menu: Some(Menu {
+//                 items: vec![MenuItem::wait(), MenuItem::attack()],
+//                 selected: 0,
+//             }),
+//         }
+//     }
+//     pub fn update(&mut self, input: &ButtonState) {
+//         if let Some(menu) = &mut self.menu {
+//             menu.update(input);
+//         }
+//     }
 
-    pub fn render(&self, render_ctx: &RenderContext) {
-        if let Some(menu) = &self.menu {
-            menu.render(render_ctx);
-        }
-    }
-}
+//     pub fn render(&self, render_ctx: &RenderContext) {
+//         if let Some(menu) = &self.menu {
+//             menu.render(render_ctx);
+//         }
+//     }
+// }
 
-pub struct Menu {
-    items: Vec<MenuItem>,
+#[derive(Debug)]
+pub struct Menu<T> {
+    items: Vec<MenuItem<T>>,
     selected: usize,
 }
 
-impl Menu {
+impl<T: std::fmt::Display + Copy> Menu<T> {
+    pub fn new(values: &[T]) -> Self {
+        Self {
+            items: values.iter().map(|value| MenuItem::new(*value)).collect(),
+            selected: 0,
+        }
+    }
     pub fn update(&mut self, input: &ButtonState) {
         self.selected = self
             .selected
@@ -49,8 +56,8 @@ impl Menu {
         self.selected = self.selected.clamp(0, self.items.len() - 1);
     }
 
-    pub fn selected(&self) -> &MenuItem {
-        &self.items[self.selected]
+    pub fn selected(&self) -> &T {
+        &self.items[self.selected].value
     }
 
     pub fn render(&self, render_ctx: &RenderContext) {
@@ -73,19 +80,34 @@ impl Menu {
 }
 
 #[derive(PartialEq, Eq, Debug)]
-pub struct MenuItem {
+pub struct MenuItem<T> {
     label: String,
+    value: T,
 }
 
-impl MenuItem {
-    pub fn attack() -> Self {
+impl<T> MenuItem<T>
+where
+    T: std::fmt::Display + Copy,
+{
+    pub fn new(value: T) -> Self {
         Self {
-            label: "Attack".to_string(),
+            label: value.to_string(),
+            value,
         }
     }
-    pub fn wait() -> Self {
-        Self {
-            label: "Wait".to_string(),
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum ActionItems {
+    Attack,
+    Wait,
+}
+
+impl std::fmt::Display for ActionItems {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ActionItems::Attack => write!(f, "Attack"),
+            ActionItems::Wait => write!(f, "Wait"),
         }
     }
 }

@@ -1,5 +1,6 @@
 use crate::math::Point;
 use crate::pathfinding::DijkstraMap;
+use crate::ui::{ActionItems, Menu};
 use crate::unit::UnitId;
 
 use arrayvec::ArrayVec;
@@ -59,7 +60,11 @@ pub enum PlayerState {
         id: UnitId,
         dijkstra_map: DijkstraMap,
     },
-    Action(UnitId),
+    Action {
+        menu: Menu<ActionItems>,
+        targetables: Vec<Point>,
+        id: UnitId,
+    },
 }
 
 #[derive(Debug)]
@@ -96,8 +101,13 @@ impl Transition {
     }
 
     pub fn to_player_action(id: UnitId, path: Vec<Point>) -> Self {
+        let menu = Menu::new(&[ActionItems::Attack, ActionItems::Wait]);
         let vec = vec![
-            GameState::Player(PlayerState::Action(id)),
+            GameState::Player(PlayerState::Action {
+                menu,
+                targetables: Vec::with_capacity(10),
+                id,
+            }),
             GameState::Animation {
                 timer: 0.0,
                 a_state: AnimationState::Move { unit: id, path },

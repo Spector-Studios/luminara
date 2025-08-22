@@ -12,6 +12,7 @@ use macroquad::prelude::Vec2;
 #[derive(Clone, Copy, Debug)]
 pub struct Unit {
     pub movement: u32,
+    pub turn_complete: bool,
     pub faction: Faction,
     pub curr_health: i32,
     pub max_health: i32,

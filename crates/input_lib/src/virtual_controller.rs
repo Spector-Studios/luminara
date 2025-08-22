@@ -154,6 +154,11 @@ impl Controller {
     }
 
     #[inline]
+    pub fn clicked(&self, button: Buttons) -> bool {
+        self.button_state.buttons.contains(button) && !self.last_state.buttons.contains(button)
+    }
+
+    #[inline]
     pub fn draw(&self, font: Option<&Font>) {
         for (btn, _) in &self.buttons {
             btn.draw(font);
