@@ -48,6 +48,8 @@ import android.view.inputmethod.InputMethodManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 
 import android.graphics.Color;
 import android.graphics.Insets;
@@ -186,7 +188,7 @@ class QuadSurface
             int character = event.getUnicodeChar();
             if (character == 0) {
                 String characters = event.getCharacters();
-                if (characters != null && characters.length() >= 0) {
+                if (characters != null && !characters.isEmpty()) {
                     character = characters.charAt(0);
                 }
             }
@@ -206,6 +208,8 @@ class QuadSurface
     // For some reason it only works if placed here and not in the parent layout.
     @Override
     public InputConnection onCreateInputConnection(EditorInfo outAttrs) {
+        //% QUAD_SURFACE_ON_CREATE_INPUT_CONNECTION
+
         InputConnection connection = super.onCreateInputConnection(outAttrs);
         outAttrs.imeOptions |= EditorInfo.IME_FLAG_NO_FULLSCREEN;
         return connection;
@@ -236,13 +240,18 @@ class ResizingLayout
             Insets imeInsets = insets.getInsets(WindowInsets.Type.ime());
             Insets sysInsets = insets.getInsets(WindowInsets.Type.systemBars());
 
+            int bottomPadding = sysInsets.bottom;
+            if (imeInsets.bottom > 0) {
+                bottomPadding = imeInsets.bottom;
+            }
+
             // The sys insets change when orientation changes and sys bars
             // change position.
             v.setPadding(
                 sysInsets.left,
                 sysInsets.top,
                 sysInsets.right,
-                imeInsets.bottom + sysInsets.bottom
+                bottomPadding
             );
         }
         return insets;
@@ -325,7 +334,9 @@ public class MainActivity extends Activity {
 
                     if (fullscreen) {
                         getWindow().setFlags(LayoutParams.FLAG_LAYOUT_NO_LIMITS, LayoutParams.FLAG_LAYOUT_NO_LIMITS);
-                        getWindow().getAttributes().layoutInDisplayCutoutMode = LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+                        if (Build.VERSION.SDK_INT >= 28) {
+                            getWindow().getAttributes().layoutInDisplayCutoutMode = LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+                        }
                         if (Build.VERSION.SDK_INT >= 30) {
                             getWindow().setDecorFitsSystemWindows(false);
                         } else {
@@ -359,5 +370,27 @@ public class MainActivity extends Activity {
                 }
             });
     }
-}
 
+    public String getClipboardText() {
+        ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+
+        if (!clipboard.hasPrimaryClip())
+            return null;
+
+        ClipData primaryClip = clipboard.getPrimaryClip();
+        if (primaryClip == null || primaryClip.getItemCount() < 1)
+            return null;
+
+        CharSequence clipData = clipboard.getPrimaryClip().getItemAt(0).getText();
+        if (clipData == null) {
+            return null;
+        }
+
+        return clipData.toString();
+    }
+    public void setClipboardText(String text) {
+        ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+        ClipData clip = ClipData.newPlainText("label", text);
+        clipboard.setPrimaryClip(clip);
+    }
+}
