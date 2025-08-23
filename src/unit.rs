@@ -11,6 +11,7 @@ use macroquad::prelude::Vec2;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Unit {
+    id: UnitId,
     pub movement: u32,
     pub turn_complete: bool,
     pub faction: Faction,
@@ -23,6 +24,20 @@ pub struct Unit {
 }
 
 impl Unit {
+    pub fn from_erased(id: UnitId, erased: ErasedUnit) -> Self {
+        Self {
+            id,
+            movement: erased.movement,
+            turn_complete: erased.turn_complete,
+            faction: erased.faction,
+            curr_health: erased.curr_health,
+            max_health: erased.max_health,
+            pos: erased.pos,
+            render_pos: erased.render_pos,
+            texture_handle: erased.texture_handle,
+            weapon: erased.weapon,
+        }
+    }
     pub fn get_movement_cost(&self, terrain: Terrain) -> u32 {
         match terrain {
             Terrain::Ground => 1,
@@ -31,6 +46,23 @@ impl Unit {
             Terrain::River => DijkstraMap::UNREACHABLE,
         }
     }
+
+    pub fn id(&self) -> UnitId {
+        self.id
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct ErasedUnit {
+    pub movement: u32,
+    pub turn_complete: bool,
+    pub faction: Faction,
+    pub curr_health: i32,
+    pub max_health: i32,
+    pub pos: Point,
+    pub render_pos: Option<Vec2>,
+    pub texture_handle: TextureHandle,
+    pub weapon: Option<Weapon>,
 }
 
 macro_rules! create_id {

@@ -35,6 +35,7 @@ mod _native_glue {
 pub async fn main() {
     set_pc_assets_folder("assets");
     set_default_filter_mode(FilterMode::Nearest);
+    std::panic::set_hook(Box::new(|info| error!("{:?}", info)));
 
     let mut texture_store = TextureStore::new();
     let grass = texture_store.load("grass1.png");

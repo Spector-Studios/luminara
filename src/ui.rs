@@ -37,27 +37,27 @@ use crate::render::RenderContext;
 // }
 
 #[derive(Debug)]
-pub struct Menu<T> {
-    items: Vec<MenuItem<T>>,
+pub struct Menu {
+    items: Vec<MenuItem>,
     selected: usize,
 }
 
-impl<T: std::fmt::Display + Copy> Menu<T> {
-    pub fn new(values: &[T]) -> Self {
+impl Menu {
+    pub fn new(values: &[&str]) -> Self {
         Self {
             items: values.iter().map(|value| MenuItem::new(*value)).collect(),
             selected: 0,
         }
     }
-    pub fn update(&mut self, input: &ButtonState) {
+    pub fn update(&mut self, input: ButtonState) {
         self.selected = self
             .selected
             .saturating_add_signed((-input.dpad_y).try_into().unwrap());
         self.selected = self.selected.clamp(0, self.items.len() - 1);
     }
 
-    pub fn selected(&self) -> &T {
-        &self.items[self.selected].value
+    pub fn selected(&self) -> &str {
+        &self.items[self.selected].label
     }
 
     pub fn render(&self, render_ctx: &RenderContext) {
@@ -80,34 +80,14 @@ impl<T: std::fmt::Display + Copy> Menu<T> {
 }
 
 #[derive(PartialEq, Eq, Debug)]
-pub struct MenuItem<T> {
+pub struct MenuItem {
     label: String,
-    value: T,
 }
 
-impl<T> MenuItem<T>
-where
-    T: std::fmt::Display + Copy,
-{
-    pub fn new(value: T) -> Self {
+impl MenuItem {
+    pub fn new(label: &str) -> Self {
         Self {
-            label: value.to_string(),
-            value,
-        }
-    }
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum ActionItems {
-    Attack,
-    Wait,
-}
-
-impl std::fmt::Display for ActionItems {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ActionItems::Attack => write!(f, "Attack"),
-            ActionItems::Wait => write!(f, "Wait"),
+            label: label.to_string(),
         }
     }
 }
