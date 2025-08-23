@@ -37,7 +37,7 @@ impl TextureStore {
 
     pub async fn update(&mut self) {
         for (path, handle) in self.to_load.drain(0..) {
-            let texture = load_texture(&path).await.unwrap();
+            let texture = load_texture(&path).await.expect(&path);
             self.textures[handle.0] = texture;
         }
 
