@@ -1,4 +1,6 @@
+use crate::game::GameContext;
 use macroquad::time::get_frame_time;
+use std::collections::VecDeque;
 
 use crate::math::Point;
 use crate::state::GameMsg;
@@ -30,9 +32,9 @@ impl GameState for MoveAnimation {
 
     fn update(
         &mut self,
-        msg_queue: &mut std::collections::VecDeque<super::GameMsg>,
-        game_ctx: &mut crate::game::GameContext,
-    ) -> super::Transition {
+        msg_queue: &mut VecDeque<GameMsg>,
+        _game_ctx: &mut GameContext,
+    ) -> Transition {
         self.timer += get_frame_time();
 
         if self.timer >= 0.2 {
@@ -51,7 +53,7 @@ impl GameState for MoveAnimation {
         Transition::None
     }
 
-    fn render(&self, game_ctx: &crate::game::GameContext) {}
+    fn render(&self, _game_ctx: &GameContext) {}
 
     fn name(&self) -> &str {
         "Move Animation"

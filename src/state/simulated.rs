@@ -21,14 +21,14 @@ impl SimulatedManager {
 impl GameState for SimulatedManager {
     fn update(
         &mut self,
-        msg_queue: &mut VecDeque<GameMsg>,
+        _msg_queue: &mut VecDeque<GameMsg>,
         game_ctx: &mut GameContext,
     ) -> Transition {
         game_ctx.world.setup_turn();
         Transition::Switch(Box::new(PlayerSelect))
     }
 
-    fn render(&self, game_ctx: &GameContext) {
+    fn render(&self, _game_ctx: &GameContext) {
         todo!()
     }
 

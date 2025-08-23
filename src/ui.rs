@@ -91,18 +91,3 @@ impl MenuItem {
         }
     }
 }
-
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum ActionItems {
-    Attack,
-    Wait,
-}
-
-impl std::fmt::Display for ActionItems {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ActionItems::Attack => write!(f, "Attack"),
-            ActionItems::Wait => write!(f, "Wait"),
-        }
-    }
-}

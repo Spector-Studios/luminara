@@ -97,7 +97,7 @@ impl GameState for PlayerMove {
     fn update(
         &mut self,
         msg_queue: &mut VecDeque<GameMsg>,
-        game_ctx: &mut crate::game::GameContext,
+        game_ctx: &mut GameContext,
     ) -> Transition {
         game_ctx
             .cursor
@@ -134,7 +134,7 @@ impl GameState for PlayerMove {
         Transition::None
     }
 
-    fn render(&self, game_ctx: &crate::game::GameContext) {
+    fn render(&self, game_ctx: &GameContext) {
         self.dijkstra_map
             .get_reachables()
             .iter()
@@ -176,7 +176,7 @@ impl GameState for PlayerAction {
     fn update(
         &mut self,
         msg_queue: &mut VecDeque<GameMsg>,
-        game_ctx: &mut crate::game::GameContext,
+        game_ctx: &mut GameContext,
     ) -> Transition {
         self.menu.update(game_ctx.controller.button_state());
 
@@ -193,7 +193,7 @@ impl GameState for PlayerAction {
         Transition::None
     }
 
-    fn render(&self, game_ctx: &crate::game::GameContext) {
+    fn render(&self, game_ctx: &GameContext) {
         self.menu.render(&game_ctx.render_context);
     }
 

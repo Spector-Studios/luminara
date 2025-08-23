@@ -1,5 +1,4 @@
 mod animation;
-mod menu;
 mod player;
 mod simulated;
 
@@ -98,11 +97,12 @@ pub trait GameState: Debug {
         msg_queue: &mut VecDeque<GameMsg>,
         game_ctx: &mut GameContext,
     ) -> Transition;
-    fn render(&self, game_ctx: &GameContext);
+    fn name(&self) -> &str;
+
+    fn render(&self, _game_ctx: &GameContext) {}
     fn active_unit(&self) -> Option<Unit> {
         None
     }
-    fn name(&self) -> &str;
 }
 
 #[derive(Debug)]
