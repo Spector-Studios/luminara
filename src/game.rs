@@ -70,8 +70,12 @@ impl GameContext {
 
         // INFO Cursor
         if matches!(game_state, GameState::Player(..)) {
-            self.render_context
-                .render_sprite(self.cursor.get_pos(), self.cursor.texture, 1.2);
+            self.render_context.render_sprite(
+                self.cursor.get_pos(),
+                self.cursor.texture,
+                WHITE,
+                1.2,
+            );
         }
     }
 

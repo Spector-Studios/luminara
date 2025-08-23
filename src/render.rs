@@ -76,11 +76,17 @@ impl RenderContext {
 
     pub fn render_map(&self, map: &Map) {
         self.view_rect.for_each(|pt| {
-            self.render_sprite(pt, map.get_texture_handle(pt), 1.0);
+            self.render_sprite(pt, map.get_texture_handle(pt), WHITE, 1.0);
         });
     }
 
-    pub fn render_sprite(&self, pos: impl Into<Point>, texture_handle: TextureHandle, scale: f32) {
+    pub fn render_sprite(
+        &self,
+        pos: impl Into<Point>,
+        texture_handle: TextureHandle,
+        color: Color,
+        scale: f32,
+    ) {
         let texture = self.texture_store.get(texture_handle);
 
         // TODO Rewrite this
@@ -92,20 +98,25 @@ impl RenderContext {
             ..Default::default()
         };
 
-        draw_texture_ex(texture, x, y, WHITE, params);
+        draw_texture_ex(texture, x, y, color, params);
     }
 
     pub fn render_units<'a>(&self, units: impl Iterator<Item = &'a Unit>) {
         units
             .filter(|unit| self.view_rect.point_in_rect(unit.pos))
             .for_each(|unit| {
-                self.render_sprite(unit.pos, unit.texture_handle, 1.0);
+                let color = if unit.turn_complete { GRAY } else { WHITE };
+                self.render_sprite(unit.pos, unit.texture_handle, color, 1.0);
 
                 let (x, y) = self.screen_pos(unit.pos);
                 let (w, h) = (self.tile_size * 0.9, self.tile_size * 0.2);
                 let health_frac = (unit.curr_health as f32) / (unit.max_health as f32);
                 draw_rectangle(x, y + self.tile_size, w, h, GRAY);
                 draw_rectangle(x, y + self.tile_size, w * health_frac, h, RED);
+
+                if unit.turn_complete {
+                    self.render_tile_rectangle(unit.pos, Color::new(0.2, 0.2, 0.2, 0.6));
+                }
             });
     }
 
