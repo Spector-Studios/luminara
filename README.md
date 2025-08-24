@@ -5,6 +5,9 @@ A Strategy RPG game written in Rust with [Macroquad](https://github.com/not-fl3/
 
 Currently, only Android and Web on Mobile are supported platforms.
 
+## Screenshots
+<img width="1080" height="2408" alt="Screenshot_20250824_091923_Chrome" src="https://github.com/user-attachments/assets/1aad9439-f4d2-4bd5-a9c5-082cfb7a0eb2" />
+
 ## Building
 ### Web
 ```shell
