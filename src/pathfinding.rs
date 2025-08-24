@@ -22,8 +22,7 @@ impl DijkstraMap {
         Point::new(-1, 0),
     ];
 
-    pub fn new(map: &Map, target: UnitId, units: &HashMap<UnitId, Unit>) -> Self {
-        let target = units.get(&target).unwrap();
+    pub fn new(map: &Map, target: Unit, units: &HashMap<UnitId, Unit>) -> Self {
         let mut dijkstra_map = vec![Self::UNREACHABLE; map.width * map.height];
         let mut heap = BinaryHeap::new();
         let mut reachables = Vec::new();

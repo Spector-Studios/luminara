@@ -38,21 +38,21 @@ impl WorldState {
         });
     }
 
-    pub fn get_unmoved_unit(&self, faction: Faction) -> Option<&UnitId> {
+    pub fn get_unmoved_unit(&self, faction: Faction) -> Option<Unit> {
         self.units
             .iter()
             .filter(|(_, unit)| unit.faction == faction)
             .find(|(_, unit)| unit.turn_complete == false)
-            .map(|(id, _)| id)
+            .map(|(_, unit)| *unit)
     }
 
-    pub fn get_unmoved_by_pos(&self, faction: Faction, pos: impl Into<Point>) -> Option<UnitId> {
+    pub fn get_unmoved_by_pos(&self, faction: Faction, pos: impl Into<Point>) -> Option<Unit> {
         let pos = pos.into();
         self.units
             .iter()
             .filter(|(_, unit)| unit.faction == faction && unit.turn_complete == false)
             .find(|(_, unit)| unit.pos == pos)
-            .map(|(id, _)| *id)
+            .map(|(_, unit)| *unit)
     }
 
     pub fn is_tile_empty(&self, pos: impl Into<Point>, except: Option<UnitId>) -> bool {

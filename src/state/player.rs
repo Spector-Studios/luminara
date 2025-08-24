@@ -56,15 +56,13 @@ impl GameState for PlayerSelect {
         }
 
         if game_ctx.controller.clicked(Buttons::A) {
-            if let Some(id) = game_ctx
+            if let Some(unit) = game_ctx
                 .world
                 .get_unmoved_by_pos(Faction::Player, game_ctx.cursor.get_pos())
             {
-                let dijkstra_map = DijkstraMap::new(&game_ctx.world.map, id, &game_ctx.world.units);
-                return Transition::Push(PlayerMove::boxed_new(
-                    game_ctx.world.units.get(&id).unwrap().clone(),
-                    dijkstra_map,
-                ));
+                let dijkstra_map =
+                    DijkstraMap::new(&game_ctx.world.map, unit, &game_ctx.world.units);
+                return Transition::Push(PlayerMove::boxed_new(unit, dijkstra_map));
             }
         }
 
