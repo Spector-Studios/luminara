@@ -36,7 +36,7 @@ impl Rect {
     {
         for y in self.y..self.y + self.h {
             for x in self.x..self.x + self.w {
-                f(Point { x, y })
+                f(Point { x, y });
             }
         }
     }

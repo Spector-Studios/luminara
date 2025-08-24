@@ -8,7 +8,7 @@ use std::collections::{BinaryHeap, HashMap};
 #[derive(Debug)]
 pub struct DijkstraMap {
     reachables: Vec<Point>, // INFO may be make this a Hashset?
-    dijkstra_map: Vec<u32>,
+    map: Vec<u32>,
     max_distance: u32,
     width: usize,
     heigth: usize,
@@ -80,7 +80,7 @@ impl DijkstraMap {
 
         DijkstraMap {
             reachables,
-            dijkstra_map,
+            map: dijkstra_map,
             max_distance: target.movement,
             width: map.width,
             heigth: map.height,
@@ -94,7 +94,7 @@ impl DijkstraMap {
     /// Caller should ensure the point is reachable
     pub fn get_path(&self, from: impl Into<Point>) -> Vec<Point> {
         let from = from.into();
-        let start_d = self.dijkstra_map[self.idx(from)];
+        let start_d = self.map[self.idx(from)];
         assert!(start_d != Self::UNREACHABLE);
 
         let mut path = Vec::new();
@@ -103,7 +103,7 @@ impl DijkstraMap {
 
         let max_steps = self.max_distance + 5;
         for _ in 0..max_steps {
-            let cd = self.dijkstra_map[self.idx(current)];
+            let cd = self.map[self.idx(current)];
 
             if cd == 0 {
                 break;
@@ -118,7 +118,7 @@ impl DijkstraMap {
                     continue;
                 }
 
-                let nd = self.dijkstra_map[self.idx(npos)];
+                let nd = self.map[self.idx(npos)];
                 if nd < best_d {
                     best_d = nd;
                     best = npos;
@@ -131,7 +131,7 @@ impl DijkstraMap {
             }
 
             current = best;
-            if self.dijkstra_map[self.idx(current)] != 0 {
+            if self.map[self.idx(current)] != 0 {
                 path.push(current);
             }
         }
@@ -139,9 +139,11 @@ impl DijkstraMap {
         path
     }
 
+    #[allow(clippy::cast_sign_loss)]
     fn idx(&self, pos: impl Into<Point>) -> usize {
         let pos = pos.into();
-        ((pos.y * self.width as i32) + pos.x) as usize
+        assert!(pos >= Point::zero());
+        (pos.y as usize * self.width) + pos.x as usize
     }
 }
 

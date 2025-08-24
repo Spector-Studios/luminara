@@ -39,14 +39,11 @@ impl GameState for PlayerSelect {
             .update(&game_ctx.controller, &game_ctx.world.map);
 
         if let Some(msg) = msg_queue.pop_front() {
-            match msg {
-                GameMsg::CommitUnit(unit) => {
-                    game_ctx.world.units.insert(unit.id(), unit);
-                }
-                _ => {
-                    error!("{} state should not receive msg: {:?}", self.name(), msg);
-                    panic!("{} state should not receive msg: {:?}", self.name(), msg);
-                }
+            if let GameMsg::CommitUnit(unit) = msg {
+                game_ctx.world.units.insert(unit.id(), unit);
+            } else {
+                error!("{} state should not receive msg: {:?}", self.name(), msg);
+                panic!("{} state should not receive msg: {:?}", self.name(), msg);
             }
         }
 
@@ -55,15 +52,13 @@ impl GameState for PlayerSelect {
             return Transition::Switch(Box::new(SimulatedManager::new(Faction::Enemy)));
         }
 
-        if game_ctx.controller.clicked(Buttons::A) {
-            if let Some(unit) = game_ctx
+        if game_ctx.controller.clicked(Buttons::A)
+            && let Some(unit) = game_ctx
                 .world
                 .get_unmoved_by_pos(Faction::Player, game_ctx.cursor.get_pos())
-            {
-                let dijkstra_map =
-                    DijkstraMap::new(&game_ctx.world.map, unit, &game_ctx.world.units);
-                return Transition::Push(PlayerMove::boxed_new(unit, dijkstra_map));
-            }
+        {
+            let dijkstra_map = DijkstraMap::new(&game_ctx.world.map, unit, &game_ctx.world.units);
+            return Transition::Push(PlayerMove::boxed_new(unit, dijkstra_map));
         }
 
         Transition::None
@@ -78,7 +73,7 @@ impl GameState for PlayerSelect {
         );
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "Player Select"
     }
 }
@@ -154,7 +149,7 @@ impl GameState for PlayerMove {
         );
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "Player Move"
     }
 }
@@ -199,7 +194,7 @@ impl GameState for PlayerAction {
         self.menu.render(&game_ctx.render_context);
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "Player Action"
     }
 }

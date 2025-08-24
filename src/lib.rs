@@ -1,3 +1,5 @@
+#![warn(clippy::pedantic, clippy::all)]
+
 mod assets;
 mod cursor;
 mod game;
@@ -66,6 +68,6 @@ pub async fn main() {
 
         draw_multiline_text("Test\nNew Line", 100.0, 100.0, 50.0, None, WHITE);
 
-        next_frame().await
+        next_frame().await;
     }
 }

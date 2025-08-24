@@ -38,15 +38,12 @@ impl GameState for MoveAnimation {
         self.timer += get_frame_time();
 
         if self.timer >= 0.2 {
-            match self.path.pop() {
-                Some(pos) => {
-                    self.timer = 0.0;
-                    self.unit.pos = pos;
-                }
-                None => {
-                    msg_queue.push_back(GameMsg::MoveAnimationDone(self.unit));
-                    return Transition::Pop;
-                }
+            if let Some(pos) = self.path.pop() {
+                self.timer = 0.0;
+                self.unit.pos = pos;
+            } else {
+                msg_queue.push_back(GameMsg::MoveAnimationDone(self.unit));
+                return Transition::Pop;
             }
         }
 
@@ -55,7 +52,7 @@ impl GameState for MoveAnimation {
 
     fn render(&self, _game_ctx: &GameContext) {}
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "Move Animation"
     }
 }

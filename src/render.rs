@@ -24,6 +24,7 @@ pub struct RenderContext {
     offset_y: f32,
 }
 
+#[allow(clippy::cast_precision_loss)]
 impl RenderContext {
     pub fn new(texture_store: TextureStore, map_width: i32, map_height: i32) -> Self {
         let mut render_context = Self {
@@ -45,14 +46,14 @@ impl RenderContext {
         let cursor_pos = cursor_pos.into();
 
         if self.view_rect.x > cursor_pos.x - MARGIN {
-            self.view_rect.x -= 1
+            self.view_rect.x -= 1;
         } else if self.view_rect.x + self.view_rect.w < cursor_pos.x + MARGIN + 1 {
-            self.view_rect.x += 1
+            self.view_rect.x += 1;
         }
         if self.view_rect.y > cursor_pos.y - MARGIN {
-            self.view_rect.y -= 1
+            self.view_rect.y -= 1;
         } else if self.view_rect.y + self.view_rect.h < cursor_pos.y + MARGIN + 1 {
-            self.view_rect.y += 1
+            self.view_rect.y += 1;
         }
 
         self.view_rect.x = self.view_rect.x.clamp(0, self.map_width - VIEWPORT_WIDTH);

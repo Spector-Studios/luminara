@@ -53,10 +53,10 @@ impl Cursor {
         }
         self.timer += get_frame_time();
 
-        if self.timer > INITIAL_DELAY {
-            if (self.timer - INITIAL_DELAY) % REPEAT_DELAY < get_frame_time() {
-                self.shift(delta, map);
-            }
+        if self.timer > INITIAL_DELAY
+            && (self.timer - INITIAL_DELAY) % REPEAT_DELAY < get_frame_time()
+        {
+            self.shift(delta, map);
         }
     }
 }

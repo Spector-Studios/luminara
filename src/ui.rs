@@ -45,7 +45,7 @@ pub struct Menu {
 impl Menu {
     pub fn new(values: &[&str]) -> Self {
         Self {
-            items: values.iter().map(|value| MenuItem::new(*value)).collect(),
+            items: values.iter().map(|value| MenuItem::new(value)).collect(),
             selected: 0,
         }
     }
@@ -60,6 +60,7 @@ impl Menu {
         &self.items[self.selected].label
     }
 
+    #[allow(clippy::cast_precision_loss)]
     pub fn render(&self, render_ctx: &RenderContext) {
         let (view_width, view_height) = render_ctx.view_size();
         let w = view_width / 3.0;

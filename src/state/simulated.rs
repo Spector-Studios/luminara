@@ -42,14 +42,11 @@ impl GameState for SimulatedManager {
         game_ctx: &mut GameContext,
     ) -> Transition {
         if let Some(msg) = msg_queue.pop_front() {
-            match msg {
-                GameMsg::CommitUnit(unit) => {
-                    game_ctx.world.units.insert(unit.id(), unit);
-                }
-                _ => {
-                    error!("{} state should not receive msg: {:?}", self.name(), msg);
-                    panic!("{} state should not receive msg: {:?}", self.name(), msg);
-                }
+            if let GameMsg::CommitUnit(unit) = msg {
+                game_ctx.world.units.insert(unit.id(), unit);
+            } else {
+                error!("{} state should not receive msg: {:?}", self.name(), msg);
+                panic!("{} state should not receive msg: {:?}", self.name(), msg);
             }
         }
         if let Some(unit) = game_ctx.world.get_unmoved_unit(self.faction) {
@@ -60,7 +57,7 @@ impl GameState for SimulatedManager {
         Transition::Switch(Box::new(PlayerSelect))
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "Simulated Manager"
     }
 }
@@ -95,7 +92,7 @@ impl GameState for MoveSimulated {
         let dest = self.dijkstra_map.get_reachables().choose().unwrap();
         let path = self.dijkstra_map.get_path(*dest);
 
-        return Transition::Push(MoveAnimation::boxed_new(self.unit, path));
+        Transition::Push(MoveAnimation::boxed_new(self.unit, path))
     }
 
     fn name(&self) -> &str {
@@ -124,7 +121,7 @@ impl GameState for ActionSimulated {
     ) -> Transition {
         self.unit.turn_complete = true;
         msg_queue.push_back(GameMsg::CommitUnit(self.unit));
-        return Transition::Pop;
+        Transition::Pop
     }
 
     fn name(&self) -> &str {

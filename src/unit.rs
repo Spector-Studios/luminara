@@ -42,8 +42,7 @@ impl Unit {
         match terrain {
             Terrain::Ground => 1,
             Terrain::Forest => 2,
-            Terrain::Mountain => DijkstraMap::UNREACHABLE,
-            Terrain::River => DijkstraMap::UNREACHABLE,
+            Terrain::Mountain | Terrain::River => DijkstraMap::UNREACHABLE,
         }
     }
 

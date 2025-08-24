@@ -42,7 +42,7 @@ impl WorldState {
         self.units
             .iter()
             .filter(|(_, unit)| unit.faction == faction)
-            .find(|(_, unit)| unit.turn_complete == false)
+            .find(|(_, unit)| !unit.turn_complete)
             .map(|(_, unit)| *unit)
     }
 
@@ -50,7 +50,7 @@ impl WorldState {
         let pos = pos.into();
         self.units
             .iter()
-            .filter(|(_, unit)| unit.faction == faction && unit.turn_complete == false)
+            .filter(|(_, unit)| unit.faction == faction && !unit.turn_complete)
             .find(|(_, unit)| unit.pos == pos)
             .map(|(_, unit)| *unit)
     }

@@ -144,16 +144,19 @@ impl Controller {
     }
 
     #[inline]
+    #[must_use]
     pub fn button_state(&self) -> ButtonState {
         self.button_state
     }
 
     #[inline]
+    #[must_use]
     pub fn last_state(&self) -> ButtonState {
         self.last_state
     }
 
     #[inline]
+    #[must_use]
     pub fn clicked(&self, button: Buttons) -> bool {
         self.button_state.buttons.contains(button) && !self.last_state.buttons.contains(button)
     }
