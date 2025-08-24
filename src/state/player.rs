@@ -107,15 +107,19 @@ impl GameState for PlayerMove {
             return Transition::Pop;
         }
 
-        if game_ctx.controller.clicked(Buttons::A)
-            && (game_ctx
+        if game_ctx.controller.clicked(Buttons::A) {
+            if self.unit.pos == game_ctx.cursor.get_pos() {
+                return Transition::Push(PlayerAction::boxed_new(self.unit));
+            }
+            if game_ctx
                 .world
-                .is_tile_empty(game_ctx.cursor.get_pos(), Some(self.unit.id())))
-        {
-            return Transition::Push(MoveAnimation::boxed_new(
-                self.unit,
-                self.dijkstra_map.get_path(game_ctx.cursor.get_pos()),
-            ));
+                .is_tile_empty(game_ctx.cursor.get_pos(), Some(self.unit.id()))
+            {
+                return Transition::Push(MoveAnimation::boxed_new(
+                    self.unit,
+                    self.dijkstra_map.get_path(game_ctx.cursor.get_pos()),
+                ));
+            }
         }
 
         if let Some(msg) = msg_queue.pop_front() {
