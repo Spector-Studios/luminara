@@ -107,6 +107,8 @@ impl Controller {
 
     #[inline]
     fn resize(&mut self) {
+        info!("Controller resize requested.");
+
         let sw = screen_width();
         let sh = screen_height();
         self.screen_width = sw;
@@ -117,7 +119,7 @@ impl Controller {
 
         let (dpad_x, dpad_y) = (sw * 0.06 + btn_size, sh * 0.85 - btn_size);
         let (act_x, act_y) = (sw * 0.94 - 2.0 * btn_size, sh * 0.85 - btn_size);
-        let (bar_x, bar_y) = (sw * 0.5, sh * 0.95);
+        let (bar_x, bar_y) = (sw * 0.5, sh * 0.95 - bar_btn_size.1);
 
         for (btn, kind) in &mut self.buttons {
             match kind {

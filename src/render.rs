@@ -22,6 +22,7 @@ pub struct RenderContext {
     tile_size: f32,
     offset_x: f32,
     offset_y: f32,
+    screen_size: (f32, f32),
 }
 
 #[allow(clippy::cast_precision_loss)]
@@ -35,6 +36,7 @@ impl RenderContext {
             tile_size: 0.0,
             offset_x: 0.0,
             offset_y: 0.0,
+            screen_size: (1.0, 1.0),
         };
 
         render_context.update((0, 0));
@@ -59,9 +61,38 @@ impl RenderContext {
         self.view_rect.x = self.view_rect.x.clamp(0, self.map_width - VIEWPORT_WIDTH);
         self.view_rect.y = self.view_rect.y.clamp(0, self.map_height - VIEWPORT_HEIGHT);
 
-        self.tile_size = (screen_width() * 0.99) / VIEWPORT_WIDTH as f32;
-        self.offset_x = (screen_width() - (screen_width() * 0.99)) / 2.0;
-        self.offset_y = (screen_height() - (screen_height() * 0.7)) / 2.0;
+        if (self.screen_size.0 - screen_width()).abs() > 1.0
+            || (self.screen_size.1 - screen_height()).abs() > 1.0
+        {
+            self.resize();
+        }
+    }
+
+    fn resize(&mut self) {
+        const PADDING: f32 = 0.01;
+        info!("Resize viewport");
+
+        let sw = screen_width();
+        let sh = screen_height();
+        self.screen_size = (sw, sh);
+
+        let drawable_w = sw * (1.0 - 2.0 * PADDING);
+        let drawable_h = sh * (1.0 - 2.0 * PADDING);
+
+        let tile_size_w = drawable_w / VIEWPORT_WIDTH as f32;
+        let tile_size_h = drawable_h / VIEWPORT_HEIGHT as f32;
+        self.tile_size = f32::min(tile_size_w, tile_size_h);
+
+        let viewport_width_px = self.tile_size * VIEWPORT_WIDTH as f32;
+        let viewport_height_px = self.tile_size * VIEWPORT_HEIGHT as f32;
+
+        self.offset_x = (sw - viewport_width_px) / 2.0;
+
+        if sw < sh {
+            self.offset_y = sw * 0.3;
+        } else {
+            self.offset_y = (sh - viewport_height_px) / 2.0;
+        }
     }
 
     pub fn map_view_rect(&self) -> &TileRect {
