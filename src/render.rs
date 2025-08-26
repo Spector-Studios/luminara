@@ -1,5 +1,5 @@
 use crate::math::Point;
-use crate::math::Rect;
+use crate::math::TileRect;
 use crate::unit::Unit;
 use crate::{
     assets::{TextureHandle, TextureStore},
@@ -16,7 +16,7 @@ const VIEWPORT_HEIGHT: i32 = 10;
 #[derive(Debug)]
 pub struct RenderContext {
     pub texture_store: TextureStore,
-    view_rect: Rect,
+    view_rect: TileRect,
     map_width: i32,
     map_height: i32,
     tile_size: f32,
@@ -29,7 +29,7 @@ impl RenderContext {
     pub fn new(texture_store: TextureStore, map_width: i32, map_height: i32) -> Self {
         let mut render_context = Self {
             texture_store,
-            view_rect: Rect::with_size(0, 0, VIEWPORT_WIDTH, VIEWPORT_HEIGHT),
+            view_rect: TileRect::with_size(0, 0, VIEWPORT_WIDTH, VIEWPORT_HEIGHT),
             map_width,
             map_height,
             tile_size: 0.0,
@@ -64,7 +64,7 @@ impl RenderContext {
         self.offset_y = (screen_height() - (screen_height() * 0.7)) / 2.0;
     }
 
-    pub fn map_view_rect(&self) -> &Rect {
+    pub fn map_view_rect(&self) -> &TileRect {
         &self.view_rect
     }
 
@@ -142,5 +142,14 @@ impl RenderContext {
 
     pub fn offsets(&self) -> (f32, f32) {
         (self.offset_x, self.offset_y)
+    }
+
+    pub fn view_rect(&self) -> Rect {
+        Rect {
+            x: self.offset_x,
+            y: self.offset_y,
+            w: self.tile_size * VIEWPORT_WIDTH as f32,
+            h: self.tile_size * VIEWPORT_HEIGHT as f32,
+        }
     }
 }

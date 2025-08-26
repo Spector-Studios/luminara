@@ -5,7 +5,7 @@ pub struct Point {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct Rect {
+pub struct TileRect {
     pub x: i32,
     pub y: i32,
     pub w: i32,
@@ -21,7 +21,7 @@ impl Point {
     }
 }
 
-impl Rect {
+impl TileRect {
     pub fn with_size(x: i32, y: i32, w: i32, h: i32) -> Self {
         Self { x, y, w, h }
     }

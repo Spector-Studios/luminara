@@ -1,6 +1,6 @@
 use crate::assets::TextureHandle;
 use crate::math::Point;
-use crate::math::Rect;
+use crate::math::TileRect;
 
 use macroquad::rand::ChooseRandom;
 
@@ -65,7 +65,7 @@ impl Map {
     }
 
     pub fn in_bounds(&self, pt: Point) -> bool {
-        let map_rect = Rect::with_size(
+        let map_rect = TileRect::with_size(
             0,
             0,
             self.width.try_into().unwrap(),

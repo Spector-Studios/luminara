@@ -3,7 +3,8 @@ use std::collections::VecDeque;
 use super::animation::MoveAnimation;
 use super::simulated::SimulatedManager;
 use crate::game::GameContext;
-use crate::pathfinding::DijkstraMap;
+use crate::math::Point;
+use crate::pathfinding::{DijkstraMap, get_targetables};
 use crate::state::{GameMsg, GameState, Transition};
 use crate::ui::Menu;
 use crate::unit::Unit;
@@ -24,6 +25,7 @@ struct PlayerMove {
 
 #[derive(Debug)]
 struct PlayerAction {
+    targetables: Vec<Point>,
     unit: Unit,
     menu: Menu,
 }
@@ -159,6 +161,7 @@ impl PlayerAction {
     const WAIT: &str = "Wait";
     pub fn boxed_new(unit: Unit) -> Box<Self> {
         Box::new(Self {
+            targetables: Vec::new(),
             unit,
             menu: Menu::new(&[Self::ATTACK, Self::WAIT]),
         })
@@ -181,16 +184,37 @@ impl GameState for PlayerAction {
             return Transition::Pop;
         }
 
-        if game_ctx.controller.clicked(Buttons::A) && self.menu.selected() == Self::WAIT {
-            self.unit.turn_complete = true;
-            msg_queue.push_back(GameMsg::CommitUnit(self.unit));
-            return Transition::Pop;
+        match self.menu.selected() {
+            Self::WAIT => {
+                self.targetables.clear();
+                if game_ctx.controller.clicked(Buttons::A) {
+                    self.unit.turn_complete = true;
+                    msg_queue.push_back(GameMsg::CommitUnit(self.unit));
+                    return Transition::Pop;
+                }
+            }
+            Self::ATTACK => {
+                self.targetables = get_targetables(self.unit);
+            }
+            _ => error!(
+                "Unrecognised option: {} in state: {}",
+                self.menu.selected(),
+                self.name()
+            ),
         }
 
         Transition::None
     }
 
     fn render(&self, game_ctx: &GameContext) {
+        self.targetables
+            .iter()
+            .filter(|pt| game_ctx.render_context.in_bounds(**pt))
+            .for_each(|pt| {
+                game_ctx
+                    .render_context
+                    .render_tile_rectangle(*pt, Color::new(1.0, 0.0, 0.0, 0.4));
+            });
         self.menu.render(&game_ctx.render_context);
     }
 

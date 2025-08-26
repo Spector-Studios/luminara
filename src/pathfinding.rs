@@ -147,8 +147,8 @@ impl DijkstraMap {
     }
 }
 
-pub fn get_targetables(attacker: UnitId, units: &HashMap<UnitId, Unit>) -> Vec<Point> {
-    let start = units.get(&attacker).unwrap().pos;
+pub fn get_targetables(attacker: Unit) -> Vec<Point> {
+    let start = attacker.pos;
     let range = 2i32; // TODO Get range from unit
 
     let mut points = Vec::new();

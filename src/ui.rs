@@ -61,13 +61,13 @@ impl Menu {
     }
 
     #[allow(clippy::cast_precision_loss)]
+    // TODO Shift menu position based on cursor pos
     pub fn render(&self, render_ctx: &RenderContext) {
-        let (view_width, view_height) = render_ctx.view_size();
-        let w = view_width / 3.0;
-        let h = view_height / 15.0;
-        let (mut x, mut y) = render_ctx.offsets();
-        x += w;
-        y += h;
+        let view_rect = render_ctx.view_rect();
+        let w = view_rect.w * 0.2;
+        let h = view_rect.h / 15.0;
+        let x = view_rect.x + (view_rect.w * 0.9) - w;
+        let y = view_rect.y + view_rect.h * 0.2;
 
         self.items.iter().enumerate().for_each(|(i, item)| {
             draw_rectangle(x, y + (i as f32 * h), w, h, BLUE);

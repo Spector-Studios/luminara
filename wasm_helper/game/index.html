@@ -5,8 +5,15 @@
     <meta charset="utf-8">
     <title>Game</title>
     <style>
-        html,
-        body,
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: black;
+        }
+
         canvas {
             margin: 0px;
             padding: 0px;
@@ -17,6 +24,16 @@
             background: black;
             display: block;
             z-index: 0;
+        }
+    </style>
+
+    <style>
+        #fullscreen {
+            position: absolute;
+            top: 50px;
+            left: 50%;
+            z-index: 10;
+            transform: translateX(-50%);
         }
     </style>
 
@@ -35,5 +52,18 @@
     <!-- Minified and statically hosted version of https://github.com/not-fl3/macroquad/blob/master/js/mq_js_bundle.js -->
     <script src="https://not-fl3.github.io/miniquad-samples/mq_js_bundle.js"></script>
     <script>load("game.wasm");</script> <!-- Your compiled wasm file -->
+    
+    <button id="fullscreen">Fullscreen</button>
+    <script>
+        const btn = document.getElementById("fullscreen");
+
+        btn.addEventListener("click", () => {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        });
+    </script>
 </body>
 </html>

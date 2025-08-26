@@ -3,10 +3,10 @@ use macroquad::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct XButton {
-    rect: Rect,
-    label: String,
-    color: Color,
-    pub is_pressed: bool,
+    pub rect: Rect,
+    pub label: String,
+    pub color: Color,
+    is_pressed: bool,
 }
 
 impl XButton {
@@ -25,6 +25,11 @@ impl XButton {
         self.is_pressed = touches()
             .iter()
             .any(|touch| self.rect.contains(touch.position));
+    }
+
+    #[inline]
+    pub fn is_pressed(&self) -> bool {
+        self.is_pressed
     }
 
     #[inline]

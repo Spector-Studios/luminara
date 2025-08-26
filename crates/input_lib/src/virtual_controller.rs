@@ -75,69 +75,113 @@ pub struct Controller {
     buttons: [(XButton, ButtonKind); 10],
     button_state: ButtonState,
     last_state: ButtonState,
+    screen_width: f32,
+    screen_height: f32,
 }
 
 impl Controller {
     #[must_use]
     pub fn new() -> Self {
-        let sw = screen_width();
-        let sh = screen_height();
-
-        Self {
+        let mut controller = Self {
+            screen_width: 0.0,
+            screen_height: 0.0,
             buttons: [
-                (
-                    xbutton(200.0, sh - 400.0, 100.0, 100.0, "↑"),
-                    ButtonKind::DPad(DPadButtons::Up),
-                ),
-                (
-                    xbutton(200.0, sh - 200.0, 100.0, 100.0, "↓"),
-                    ButtonKind::DPad(DPadButtons::Down),
-                ),
-                (
-                    xbutton(100.0, sh - 300.0, 100.0, 100.0, "←"),
-                    ButtonKind::DPad(DPadButtons::Left),
-                ),
-                (
-                    xbutton(300.0, sh - 300.0, 100.0, 100.0, "→"),
-                    ButtonKind::DPad(DPadButtons::Right),
-                ),
-                (
-                    xbutton(sw - 150.0 + 10.0, sh - 350.0 - 10.0, 100.0, 100.0, "A"),
-                    ButtonKind::Action(Buttons::A),
-                ),
-                (
-                    xbutton(sw - 250.0 - 10.0, sh - 250.0 + 10.0, 100.0, 100.0, "B"),
-                    ButtonKind::Action(Buttons::B),
-                ),
-                (
-                    xbutton(sw - 250.0 - 10.0, sh - 350.0 - 10.0, 100.0, 100.0, "X"),
-                    ButtonKind::Action(Buttons::X),
-                ),
-                (
-                    xbutton(sw - 150.0 + 10.0, sh - 250.0 + 10.0, 100.0, 100.0, "Y"),
-                    ButtonKind::Action(Buttons::Y),
-                ),
-                (
-                    xbutton(sw / 2.0 - 50.0 - 100.0, sh - 600.0, 100.0, 50.0, "Start"),
-                    ButtonKind::Action(Buttons::Start),
-                ),
-                (
-                    xbutton(sw / 2.0 - 50.0 + 100.0, sh - 600.0, 100.0, 50.0, "Select"),
-                    ButtonKind::Action(Buttons::Select),
-                ),
+                (xbutton("↑"), ButtonKind::DPad(DPadButtons::Up)),
+                (xbutton("↓"), ButtonKind::DPad(DPadButtons::Down)),
+                (xbutton("←"), ButtonKind::DPad(DPadButtons::Left)),
+                (xbutton("→"), ButtonKind::DPad(DPadButtons::Right)),
+                (xbutton("A"), ButtonKind::Action(Buttons::A)),
+                (xbutton("B"), ButtonKind::Action(Buttons::B)),
+                (xbutton("X"), ButtonKind::Action(Buttons::X)),
+                (xbutton("Y"), ButtonKind::Action(Buttons::Y)),
+                (xbutton("Start"), ButtonKind::Action(Buttons::Start)),
+                (xbutton("Select"), ButtonKind::Action(Buttons::Select)),
             ],
             button_state: ButtonState::new(),
             last_state: ButtonState::new(),
+        };
+
+        controller.resize();
+        controller
+    }
+
+    #[inline]
+    fn resize(&mut self) {
+        let sw = screen_width();
+        let sh = screen_height();
+        self.screen_width = sw;
+        self.screen_height = sh;
+
+        let btn_size = f32::max(sh, sw) * 0.05;
+        let bar_btn_size = (btn_size * 1.5, btn_size * 0.75);
+
+        let (dpad_x, dpad_y) = (sw * 0.06 + btn_size, sh * 0.85 - btn_size);
+        let (act_x, act_y) = (sw * 0.94 - 2.0 * btn_size, sh * 0.85 - btn_size);
+        let (bar_x, bar_y) = (sw * 0.5, sh * 0.95);
+
+        for (btn, kind) in &mut self.buttons {
+            match kind {
+                ButtonKind::DPad(DPadButtons::Up) => {
+                    btn.rect = Rect::new(dpad_x, dpad_y - btn_size, btn_size, btn_size);
+                }
+                ButtonKind::DPad(DPadButtons::Down) => {
+                    btn.rect = Rect::new(dpad_x, dpad_y + btn_size, btn_size, btn_size);
+                }
+                ButtonKind::DPad(DPadButtons::Left) => {
+                    btn.rect = Rect::new(dpad_x - btn_size, dpad_y, btn_size, btn_size);
+                }
+                ButtonKind::DPad(DPadButtons::Right) => {
+                    btn.rect = Rect::new(dpad_x + btn_size, dpad_y, btn_size, btn_size);
+                }
+
+                ButtonKind::Action(Buttons::A) => {
+                    btn.rect = Rect::new(act_x + btn_size, act_y, btn_size, btn_size);
+                }
+                ButtonKind::Action(Buttons::B) => {
+                    btn.rect = Rect::new(act_x, act_y + btn_size, btn_size, btn_size);
+                }
+
+                ButtonKind::Action(Buttons::X) => {
+                    btn.rect = Rect::new(act_x, act_y - btn_size, btn_size, btn_size);
+                }
+
+                ButtonKind::Action(Buttons::Y) => {
+                    btn.rect = Rect::new(act_x - btn_size, act_y, btn_size, btn_size);
+                }
+
+                ButtonKind::Action(Buttons::Start) => {
+                    btn.rect = Rect::new(
+                        bar_x - bar_btn_size.0 * 1.5,
+                        bar_y,
+                        bar_btn_size.0,
+                        bar_btn_size.1,
+                    );
+                }
+
+                ButtonKind::Action(Buttons::Select) => {
+                    btn.rect = Rect::new(
+                        bar_x + bar_btn_size.0 * 0.5,
+                        bar_y,
+                        bar_btn_size.0,
+                        bar_btn_size.1,
+                    );
+                }
+            }
         }
     }
 
     #[inline]
     pub fn update(&mut self) {
+        if (self.screen_width - screen_width()).abs() > 1.0
+            || (self.screen_height - screen_height()).abs() > 1.0
+        {
+            self.resize();
+        }
         self.last_state = self.button_state;
         self.button_state.reset();
         for (btn, flag) in &mut self.buttons {
             btn.update();
-            if btn.is_pressed {
+            if btn.is_pressed() {
                 self.button_state.set(*flag);
             }
         }
@@ -176,6 +220,6 @@ impl Default for Controller {
 }
 
 #[inline]
-fn xbutton(x: f32, y: f32, w: f32, h: f32, label: &str) -> XButton {
-    XButton::new(Rect::new(x, y, w, h), label, RED)
+fn xbutton(label: &str) -> XButton {
+    XButton::new(Rect::new(0.0, 0.0, 0.0, 0.0), label, RED)
 }
