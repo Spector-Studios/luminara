@@ -1,4 +1,5 @@
 use crate::game::GameContext;
+use crate::state::Command;
 use macroquad::time::get_frame_time;
 use std::collections::VecDeque;
 
@@ -33,7 +34,8 @@ impl GameState for MoveAnimation {
     fn update(
         &mut self,
         msg_queue: &mut VecDeque<GameMsg>,
-        _game_ctx: &mut GameContext,
+        _game_ctx: &GameContext,
+        _commands: &mut VecDeque<Command>,
     ) -> Transition {
         self.timer += get_frame_time();
 

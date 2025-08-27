@@ -1,7 +1,8 @@
-use macroquad::logging::error;
+use macroquad::logging::warn;
 use macroquad::rand::ChooseRandom;
 
 use crate::pathfinding::DijkstraMap;
+use crate::state::Command;
 use crate::state::GameContext;
 use crate::state::GameMsg;
 use crate::state::GameState;
@@ -39,22 +40,19 @@ impl GameState for SimulatedManager {
     fn update(
         &mut self,
         msg_queue: &mut VecDeque<GameMsg>,
-        game_ctx: &mut GameContext,
+        game_ctx: &GameContext,
+        commands: &mut VecDeque<Command>,
     ) -> Transition {
         if let Some(msg) = msg_queue.pop_front() {
-            if let GameMsg::CommitUnit(unit) = msg {
-                game_ctx.world.units.insert(unit.id(), unit);
-            } else {
-                error!("{} state should not receive msg: {:?}", self.name(), msg);
-                panic!("{} state should not receive msg: {:?}", self.name(), msg);
-            }
+            warn!("{} state should not receive msg: {:?}", self.name(), msg);
         }
         if let Some(unit) = game_ctx.world.get_unmoved_unit(self.faction) {
             let dijkstra_map = DijkstraMap::new(&game_ctx.world.map, unit, &game_ctx.world.units);
             return Transition::Push(MoveSimulated::boxed_new(unit, dijkstra_map));
         }
-        game_ctx.world.setup_turn();
-        Transition::Switch(Box::new(PlayerSelect))
+
+        commands.push_back(Command::SetupTurn);
+        Transition::Switch(PlayerSelect::boxed_new(game_ctx))
     }
 
     fn name(&self) -> &'static str {
@@ -75,15 +73,15 @@ impl GameState for MoveSimulated {
     fn update(
         &mut self,
         msg_queue: &mut VecDeque<GameMsg>,
-        game_ctx: &mut GameContext,
+        game_ctx: &GameContext,
+        commands: &mut VecDeque<Command>,
     ) -> Transition {
         if let Some(msg) = msg_queue.pop_front() {
             match msg {
                 GameMsg::MoveAnimationDone(unit) => {
                     return Transition::Push(ActionSimulated::boxed_new(unit));
                 }
-                GameMsg::CommitUnit(_unit) => {
-                    msg_queue.push_back(msg);
+                GameMsg::ActionDone => {
                     return Transition::Pop;
                 }
             }
@@ -95,8 +93,8 @@ impl GameState for MoveSimulated {
         Transition::Push(MoveAnimation::boxed_new(self.unit, path))
     }
 
-    fn name(&self) -> &str {
-        todo!()
+    fn name(&self) -> &'static str {
+        "Move Simulated"
     }
 }
 
@@ -117,14 +115,16 @@ impl GameState for ActionSimulated {
     fn update(
         &mut self,
         msg_queue: &mut VecDeque<GameMsg>,
-        game_ctx: &mut GameContext,
+        _game_ctx: &GameContext,
+        commands: &mut VecDeque<Command>,
     ) -> Transition {
         self.unit.turn_complete = true;
-        msg_queue.push_back(GameMsg::CommitUnit(self.unit));
+        commands.push_back(Command::CommitUnit(self.unit));
+        msg_queue.push_back(GameMsg::ActionDone);
         Transition::Pop
     }
 
-    fn name(&self) -> &str {
-        todo!()
+    fn name(&self) -> &'static str {
+        "Action Simulated"
     }
 }

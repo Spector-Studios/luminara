@@ -9,6 +9,7 @@ use macroquad::prelude::get_frame_time;
 const INITIAL_DELAY: f32 = 0.25;
 const REPEAT_DELAY: f32 = 0.06;
 
+#[derive(Clone, Copy, Debug)]
 pub struct Cursor {
     pos: Point,
     timer: f32,
@@ -16,9 +17,9 @@ pub struct Cursor {
 }
 
 impl Cursor {
-    pub fn new(texture: TextureHandle) -> Self {
+    pub fn new(pos: Point, texture: TextureHandle) -> Self {
         Self {
-            pos: Point::zero(),
+            pos,
             timer: 0.0,
             texture,
         }

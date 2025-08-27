@@ -2,10 +2,11 @@ use std::collections::VecDeque;
 
 use super::animation::MoveAnimation;
 use super::simulated::SimulatedManager;
+use crate::cursor::Cursor;
 use crate::game::GameContext;
 use crate::math::Point;
 use crate::pathfinding::{DijkstraMap, get_targetables};
-use crate::state::{GameMsg, GameState, Transition};
+use crate::state::{Command, GameMsg, GameState, Transition};
 use crate::ui::Menu;
 use crate::unit::Unit;
 use crate::world::Faction;
@@ -13,14 +14,18 @@ use crate::world::Faction;
 use input_lib::Buttons;
 use macroquad::color::{Color, WHITE};
 use macroquad::logging::error;
+use macroquad::prelude::warn;
 
 #[derive(Debug)]
-pub struct PlayerSelect;
+pub struct PlayerSelect {
+    cursor: Cursor,
+}
 
 #[derive(Debug)]
 struct PlayerMove {
     unit: Unit,
     dijkstra_map: DijkstraMap,
+    cursor: Cursor,
 }
 
 #[derive(Debug)]
@@ -30,37 +35,50 @@ struct PlayerAction {
     menu: Menu,
 }
 
+impl PlayerSelect {
+    pub fn boxed_new(game_ctx: &GameContext) -> Box<Self> {
+        let pt = game_ctx
+            .world
+            .units
+            .iter()
+            .find(|(_, unit)| unit.faction == Faction::Player)
+            .map_or(Point::zero(), |(_, unit)| unit.pos);
+
+        Box::new(Self {
+            cursor: Cursor::new(
+                pt,
+                game_ctx.render_context.texture_store.get_key("cursor.png"),
+            ),
+        })
+    }
+}
 impl GameState for PlayerSelect {
     fn update(
         &mut self,
         msg_queue: &mut VecDeque<GameMsg>,
-        game_ctx: &mut GameContext,
+        game_ctx: &GameContext,
+        commands: &mut VecDeque<Command>,
     ) -> Transition {
-        game_ctx
-            .cursor
+        self.cursor
             .update(&game_ctx.controller, &game_ctx.world.map);
+        commands.push_back(Command::FocusView(self.cursor.get_pos()));
 
         if let Some(msg) = msg_queue.pop_front() {
-            if let GameMsg::CommitUnit(unit) = msg {
-                game_ctx.world.units.insert(unit.id(), unit);
-            } else {
-                error!("{} state should not receive msg: {:?}", self.name(), msg);
-                panic!("{} state should not receive msg: {:?}", self.name(), msg);
-            }
+            warn!("{} state should not receive msg: {:?}", self.name(), msg);
         }
 
         if game_ctx.world.get_unmoved_unit(Faction::Player).is_none() {
-            game_ctx.world.setup_turn();
+            commands.push_back(Command::SetupTurn);
             return Transition::Switch(Box::new(SimulatedManager::new(Faction::Enemy)));
         }
 
         if game_ctx.controller.clicked(Buttons::A)
             && let Some(unit) = game_ctx
                 .world
-                .get_unmoved_by_pos(Faction::Player, game_ctx.cursor.get_pos())
+                .get_unmoved_by_pos(Faction::Player, self.cursor.get_pos())
         {
             let dijkstra_map = DijkstraMap::new(&game_ctx.world.map, unit, &game_ctx.world.units);
-            return Transition::Push(PlayerMove::boxed_new(unit, dijkstra_map));
+            return Transition::Push(PlayerMove::boxed_new(unit, dijkstra_map, self.cursor));
         }
 
         Transition::None
@@ -68,8 +86,8 @@ impl GameState for PlayerSelect {
 
     fn render(&self, game_ctx: &GameContext) {
         game_ctx.render_context.render_sprite(
-            game_ctx.cursor.get_pos(),
-            game_ctx.cursor.texture,
+            self.cursor.get_pos(),
+            self.cursor.texture,
             WHITE,
             1.2,
         );
@@ -81,8 +99,12 @@ impl GameState for PlayerSelect {
 }
 
 impl PlayerMove {
-    pub fn boxed_new(unit: Unit, dijkstra_map: DijkstraMap) -> Box<Self> {
-        Box::new(Self { unit, dijkstra_map })
+    pub fn boxed_new(unit: Unit, dijkstra_map: DijkstraMap, cursor: Cursor) -> Box<Self> {
+        Box::new(Self {
+            unit,
+            dijkstra_map,
+            cursor,
+        })
     }
 }
 impl GameState for PlayerMove {
@@ -92,41 +114,40 @@ impl GameState for PlayerMove {
     fn update(
         &mut self,
         msg_queue: &mut VecDeque<GameMsg>,
-        game_ctx: &mut GameContext,
+        game_ctx: &GameContext,
+        commands: &mut VecDeque<Command>,
     ) -> Transition {
-        game_ctx
-            .cursor
+        if let Some(msg) = msg_queue.pop_front() {
+            match msg {
+                GameMsg::MoveAnimationDone(unit) => {
+                    return Transition::Push(PlayerAction::boxed_new(unit));
+                }
+                GameMsg::ActionDone => {
+                    return Transition::Pop;
+                }
+            }
+        }
+
+        self.cursor
             .update(&game_ctx.controller, &game_ctx.world.map);
+        commands.push_back(Command::FocusView(self.cursor.get_pos()));
 
         if game_ctx.controller.clicked(Buttons::B) {
             return Transition::Pop;
         }
 
         if game_ctx.controller.clicked(Buttons::A) {
-            if self.unit.pos == game_ctx.cursor.get_pos() {
+            if self.unit.pos == self.cursor.get_pos() {
                 return Transition::Push(PlayerAction::boxed_new(self.unit));
             }
             if game_ctx
                 .world
-                .is_tile_empty(game_ctx.cursor.get_pos(), Some(self.unit.id()))
+                .is_tile_empty(self.cursor.get_pos(), Some(self.unit.id()))
             {
                 return Transition::Push(MoveAnimation::boxed_new(
                     self.unit,
-                    self.dijkstra_map.get_path(game_ctx.cursor.get_pos()),
+                    self.dijkstra_map.get_path(self.cursor.get_pos()),
                 ));
-            }
-        }
-
-        if let Some(msg) = msg_queue.pop_front() {
-            match msg {
-                GameMsg::MoveAnimationDone(unit) => {
-                    return Transition::Push(PlayerAction::boxed_new(unit));
-                }
-
-                GameMsg::CommitUnit(unit) => {
-                    msg_queue.push_back(GameMsg::CommitUnit(unit));
-                    return Transition::Pop;
-                }
             }
         }
 
@@ -144,8 +165,8 @@ impl GameState for PlayerMove {
                     .render_tile_rectangle(*pt, Color::new(0.0, 0.0, 1.0, 0.4));
             });
         game_ctx.render_context.render_sprite(
-            game_ctx.cursor.get_pos(),
-            game_ctx.cursor.texture,
+            self.cursor.get_pos(),
+            self.cursor.texture,
             WHITE,
             1.2,
         );
@@ -159,6 +180,7 @@ impl GameState for PlayerMove {
 impl PlayerAction {
     const ATTACK: &str = "Attack";
     const WAIT: &str = "Wait";
+
     pub fn boxed_new(unit: Unit) -> Box<Self> {
         Box::new(Self {
             targetables: Vec::new(),
@@ -176,7 +198,8 @@ impl GameState for PlayerAction {
     fn update(
         &mut self,
         msg_queue: &mut VecDeque<GameMsg>,
-        game_ctx: &mut GameContext,
+        game_ctx: &GameContext,
+        commands: &mut VecDeque<Command>,
     ) -> Transition {
         self.menu.update(game_ctx.controller.button_state());
 
@@ -189,7 +212,8 @@ impl GameState for PlayerAction {
                 self.targetables.clear();
                 if game_ctx.controller.clicked(Buttons::A) {
                     self.unit.turn_complete = true;
-                    msg_queue.push_back(GameMsg::CommitUnit(self.unit));
+                    commands.push_back(Command::CommitUnit(self.unit));
+                    msg_queue.push_back(GameMsg::ActionDone);
                     return Transition::Pop;
                 }
             }

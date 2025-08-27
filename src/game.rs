@@ -13,7 +13,6 @@ pub struct GameContext {
     pub world: WorldState,
     pub render_context: RenderContext,
     pub controller: Controller,
-    pub cursor: Cursor,
 }
 
 impl GameContext {
@@ -21,7 +20,6 @@ impl GameContext {
         Self {
             world: WorldState::new(map),
             controller: Controller::new(),
-            cursor: Cursor::new(render_context.texture_store.get_key("cursor.png")),
             render_context,
         }
     }
@@ -58,9 +56,12 @@ impl Engine {
             });
         }
 
+        let game_ctx = GameContext::new(map, render_context);
+        let state_machine = StateMachine::new(&game_ctx);
+
         let mut engine = Self {
-            state_machine: StateMachine::new(),
-            game_context: GameContext::new(map, render_context),
+            state_machine,
+            game_context: game_ctx,
         };
         engine.game_context.world.spawn_units(&units);
         engine.game_context.world.setup_turn();
