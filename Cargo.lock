@@ -15,12 +15,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "683d7910e743518b0e34f1186f92494becacb047c7b6bf616c96772180fef923"
 
 [[package]]
-name = "arrayvec"
-version = "0.7.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7c02d123df017efcdfbd739ef81735b36c5ba83ec3c59c80a9d7ecc718f92e50"
-
-[[package]]
 name = "autocfg"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -204,16 +198,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "indexmap"
-version = "2.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f2481980430f9f78649238835720ddccc57e52df14ffce1c6f37391d61b563e9"
-dependencies = [
- "equivalent",
- "hashbrown",
-]
-
-[[package]]
 name = "input_lib"
 version = "0.1.0"
 dependencies = [
@@ -232,8 +216,6 @@ checksum = "1171693293099992e19cddea4e8b849964e9846f4acee11b3948bcc337be8776"
 name = "luminara"
 version = "0.1.0"
 dependencies = [
- "arrayvec",
- "indexmap",
  "input_lib",
  "macroquad",
 ]

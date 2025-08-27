@@ -1,4 +1,3 @@
-use crate::cursor::Cursor;
 use crate::map::Map;
 use crate::render::RenderContext;
 use crate::state::StateMachine;

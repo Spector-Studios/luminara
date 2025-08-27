@@ -2,7 +2,6 @@ mod animation;
 mod player;
 mod simulated;
 
-use macroquad::prelude::warn;
 use player::PlayerSelect;
 use std::collections::VecDeque;
 use std::fmt::Debug;

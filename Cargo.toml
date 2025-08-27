@@ -13,8 +13,6 @@ members = ["crates/input_lib", "crates/macroquad_ex_ui"]
 macroquad = "0.4.14"
 
 [dependencies]
-arrayvec = "0.7.6"
-indexmap = "2.10.0"
 input_lib = { version = "0.1.0", path = "crates/input_lib" }
 macroquad.workspace = true
 
