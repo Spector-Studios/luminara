@@ -5,7 +5,6 @@ use crate::math::TileRect;
 use macroquad::rand::ChooseRandom;
 
 pub struct Map {
-    tiles: Vec<TileType>,
     terrain: Vec<Terrain>,
     textures: Vec<TextureHandle>,
     pub width: usize,
@@ -17,7 +16,6 @@ impl Map {
         assert!(width * height < u32::MAX);
         let capacity = (width * height) as usize;
         Self {
-            tiles: Vec::with_capacity(capacity),
             terrain: Vec::with_capacity(capacity),
             textures: Vec::with_capacity(capacity),
             width: width as usize,
@@ -29,25 +27,21 @@ impl Map {
         let mut map = Self::empty(width, height);
 
         for _ in 0..width * height {
-            match [TileType::Ground, TileType::Forest].choose().unwrap() {
-                TileType::Ground => {
-                    map.tiles.push(TileType::Ground);
+            match [Terrain::Ground, Terrain::Forest].choose().unwrap() {
+                Terrain::Ground => {
                     map.terrain.push(Terrain::Ground);
                     map.textures.push(grass);
                 }
-                TileType::Forest => {
-                    map.tiles.push(TileType::Forest);
+                Terrain::Forest => {
                     map.terrain.push(Terrain::Forest);
                     map.textures.push(forest);
                 }
+
+                _ => {}
             }
         }
 
         map
-    }
-
-    pub fn get(&self, pos: impl Into<Point>) -> TileType {
-        *self.tiles.get(self.point_to_idx(pos.into())).unwrap()
     }
 
     pub fn get_terrain(&self, pos: impl Into<Point>) -> Terrain {
@@ -73,12 +67,6 @@ impl Map {
         );
         map_rect.point_in_rect(pt)
     }
-}
-
-#[derive(Clone, Copy, Debug)]
-pub enum TileType {
-    Ground,
-    Forest,
 }
 
 #[derive(Clone, Copy, Debug)]
