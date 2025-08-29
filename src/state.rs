@@ -6,6 +6,7 @@ use player::PlayerSelect;
 use std::collections::VecDeque;
 use std::fmt::Debug;
 
+use crate::cursor::Cursor;
 use crate::game::GameContext;
 use crate::math::Point;
 use crate::unit::Unit;
@@ -101,7 +102,9 @@ impl StateMachine {
 #[derive(Debug)]
 pub enum GameMsg {
     MoveAnimationDone(Unit),
+    SetCursor(Cursor),
     ActionDone,
+    SkillSelected,
 }
 
 #[derive(Debug)]

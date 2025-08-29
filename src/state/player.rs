@@ -64,7 +64,14 @@ impl GameState for PlayerSelect {
         commands.push_back(Command::FocusView(self.cursor.get_pos()));
 
         if let Some(msg) = msg_queue.pop_front() {
-            warn!("{} state should not receive msg: {:?}", self.name(), msg);
+            match msg {
+                GameMsg::SetCursor(cursor) => {
+                    self.cursor = cursor;
+                }
+                _ => {
+                    warn!("{} state should not receive msg: {:?}", self.name(), msg);
+                }
+            }
         }
 
         if game_ctx.world.get_unmoved_unit(Faction::Player).is_none() {
@@ -123,7 +130,12 @@ impl GameState for PlayerMove {
                     return Transition::Push(PlayerAction::boxed_new(unit));
                 }
                 GameMsg::ActionDone => {
+                    msg_queue.push_back(GameMsg::SetCursor(self.cursor));
                     return Transition::Pop;
+                }
+
+                _ => {
+                    warn!("{} state should not receive msg: {:?}", self.name(), msg);
                 }
             }
         }

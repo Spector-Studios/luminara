@@ -84,6 +84,9 @@ impl GameState for MoveSimulated {
                 GameMsg::ActionDone => {
                     return Transition::Pop;
                 }
+                _ => {
+                    warn!("{} state should not receive msg: {:?}", self.name(), msg);
+                }
             }
         }
 
