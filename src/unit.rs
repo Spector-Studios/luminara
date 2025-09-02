@@ -1,4 +1,4 @@
-use crate::assets::TextureHandle;
+use crate::assets::TextureStore;
 use crate::map::Terrain;
 use crate::math::Point;
 use crate::pathfinding::DijkstraMap;
@@ -8,8 +8,9 @@ use std::ops::Deref;
 use std::ops::DerefMut;
 
 use macroquad::prelude::Vec2;
+use macroquad::texture::Texture2D;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct Unit {
     id: UnitId,
     pub movement: u32,
@@ -19,12 +20,12 @@ pub struct Unit {
     pub max_health: i32,
     pub pos: Point,
     pub render_pos: Option<Vec2>,
-    pub texture_handle: TextureHandle,
+    pub texture: Texture2D,
     pub weapon: Option<Weapon>,
 }
 
 impl Unit {
-    pub fn from_erased(id: UnitId, erased: ErasedUnit) -> Self {
+    pub fn from_erased(id: UnitId, erased: &ErasedUnit, texture_store: &TextureStore) -> Self {
         Self {
             id,
             movement: erased.movement,
@@ -34,7 +35,7 @@ impl Unit {
             max_health: erased.max_health,
             pos: erased.pos,
             render_pos: erased.render_pos,
-            texture_handle: erased.texture_handle,
+            texture: texture_store.get(&erased.texture_path),
             weapon: erased.weapon,
         }
     }
@@ -51,7 +52,7 @@ impl Unit {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct ErasedUnit {
     pub movement: u32,
     pub turn_complete: bool,
@@ -60,7 +61,7 @@ pub struct ErasedUnit {
     pub max_health: i32,
     pub pos: Point,
     pub render_pos: Option<Vec2>,
-    pub texture_handle: TextureHandle,
+    pub texture_path: String,
     pub weapon: Option<Weapon>,
 }
 

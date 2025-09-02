@@ -2,54 +2,40 @@ use std::collections::HashMap;
 
 use macroquad::texture::{Texture2D, load_texture};
 
-#[derive(Clone, Copy, Debug)]
-pub struct TextureHandle(usize);
-
 #[derive(Debug)]
 pub struct TextureStore {
-    textures: Vec<Texture2D>,
-    handles: HashMap<String, TextureHandle>,
-    to_load: Vec<(String, TextureHandle)>,
+    textures: HashMap<String, Texture2D>,
+    to_load: Vec<String>,
 }
 
 impl TextureStore {
     pub fn new() -> Self {
         Self {
-            textures: Vec::new(),
-            handles: HashMap::new(),
+            textures: HashMap::new(),
             to_load: Vec::new(),
         }
     }
 
-    #[must_use]
-    pub fn load(&mut self, path: &str) -> TextureHandle {
-        if let Some(&id) = self.handles.get(path) {
-            return id;
+    pub fn load(&mut self, path: &str) {
+        if self.textures.contains_key(path) {
+            return;
         }
 
-        let handle = TextureHandle(self.textures.len());
-        self.textures.push(Texture2D::empty());
-        self.to_load.push((path.to_string(), handle));
-        self.handles.insert(path.to_string(), handle);
-
-        handle
+        self.to_load.push(path.to_string());
     }
 
     pub async fn update(&mut self) {
-        for (path, handle) in self.to_load.drain(0..) {
+        for path in self.to_load.drain(0..) {
             let texture = load_texture(&path).await.expect(&path);
-            self.textures[handle.0] = texture;
+            self.textures.insert(path, texture);
         }
 
         // INFO Creating Atlas causes blank lines between some map tiles
         // build_textures_atlas();
     }
 
-    pub fn get(&self, handle: TextureHandle) -> &Texture2D {
-        &self.textures[handle.0]
-    }
-
-    pub fn get_key(&self, path: &str) -> TextureHandle {
-        *self.handles.get(path).unwrap()
+    #[must_use]
+    pub fn get(&self, path: &str) -> Texture2D {
+        self.textures.get(path).cloned().unwrap()
     }
 }

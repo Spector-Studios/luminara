@@ -1,10 +1,7 @@
+use crate::map::Map;
 use crate::math::Point;
 use crate::math::TileRect;
 use crate::unit::Unit;
-use crate::{
-    assets::{TextureHandle, TextureStore},
-    map::Map,
-};
 
 use macroquad::prelude::vec2;
 use macroquad::prelude::*;
@@ -15,7 +12,6 @@ const VIEWPORT_HEIGHT: i32 = 10;
 
 #[derive(Debug)]
 pub struct RenderContext {
-    pub texture_store: TextureStore,
     view_rect: TileRect,
     map_width: i32,
     map_height: i32,
@@ -27,9 +23,8 @@ pub struct RenderContext {
 
 #[allow(clippy::cast_precision_loss)]
 impl RenderContext {
-    pub fn new(texture_store: TextureStore, map_width: i32, map_height: i32) -> Self {
+    pub fn new(map_width: i32, map_height: i32) -> Self {
         let mut render_context = Self {
-            texture_store,
             view_rect: TileRect::with_size(0, 0, VIEWPORT_WIDTH, VIEWPORT_HEIGHT),
             map_width,
             map_height,
@@ -115,12 +110,10 @@ impl RenderContext {
     pub fn render_sprite(
         &self,
         pos: impl Into<Point>,
-        texture_handle: TextureHandle,
+        texture: &Texture2D,
         color: Color,
         scale: f32,
     ) {
-        let texture = self.texture_store.get(texture_handle);
-
         // TODO Rewrite this
         let (mut x, mut y) = self.screen_pos(pos);
         let padding = ((1.0 - scale) / 2.0) * self.tile_size;
@@ -133,9 +126,9 @@ impl RenderContext {
         draw_texture_ex(texture, x, y, color, params);
     }
 
-    pub fn render_unit(&self, unit: Unit) {
+    pub fn render_unit(&self, unit: &Unit) {
         let color = if unit.turn_complete { GRAY } else { WHITE };
-        self.render_sprite(unit.pos, unit.texture_handle, color, 1.0);
+        self.render_sprite(unit.pos, &unit.texture, color, 1.0);
 
         let (x, y) = self.screen_pos(unit.pos);
         let (w, h) = (self.tile_size * 0.9, self.tile_size * 0.2);

@@ -74,7 +74,7 @@ impl StateMachine {
             .iter()
             .filter(|(_, unit)| game_ctx.render_context.in_bounds(unit.pos))
             .filter(|(id, _)| operating_unit.is_none_or(|unit| unit.id() != **id))
-            .for_each(|(_, unit)| game_ctx.render_context.render_unit(*unit));
+            .for_each(|(_, unit)| game_ctx.render_context.render_unit(unit));
         if let Some(unit) = operating_unit
             && game_ctx.render_context.in_bounds(unit.pos)
         {
@@ -124,7 +124,7 @@ pub trait GameState: Debug {
     fn name(&self) -> &'static str;
 
     fn render(&self, _game_ctx: &GameContext) {}
-    fn active_unit(&self) -> Option<Unit> {
+    fn active_unit(&self) -> Option<&Unit> {
         None
     }
 }

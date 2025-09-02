@@ -27,8 +27,8 @@ impl MoveAnimation {
 }
 
 impl GameState for MoveAnimation {
-    fn active_unit(&self) -> Option<Unit> {
-        Some(self.unit)
+    fn active_unit(&self) -> Option<&Unit> {
+        Some(&self.unit)
     }
 
     fn update(
@@ -44,7 +44,7 @@ impl GameState for MoveAnimation {
                 self.timer = 0.0;
                 self.unit.pos = pos;
             } else {
-                msg_queue.push_back(GameMsg::MoveAnimationDone(self.unit));
+                msg_queue.push_back(GameMsg::MoveAnimationDone(self.unit.clone()));
                 return Transition::Pop;
             }
         }

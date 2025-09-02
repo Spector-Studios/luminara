@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use crate::Map;
+use crate::assets::TextureStore;
 use crate::math::Point;
 use crate::unit::ErasedUnit;
 use crate::unit::Unit;
@@ -22,14 +23,12 @@ impl WorldState {
         }
     }
 
-    pub fn spawn_units(&mut self, units: &[ErasedUnit]) {
-        for unit in units {
-            self.units.insert(
-                self.next_unit_id,
-                Unit::from_erased(self.next_unit_id, *unit),
-            );
-            self.next_unit_id.next();
-        }
+    pub fn spawn_units(&mut self, unit: &ErasedUnit, texture_store: &TextureStore) {
+        self.units.insert(
+            self.next_unit_id,
+            Unit::from_erased(self.next_unit_id, unit, texture_store),
+        );
+        self.next_unit_id.next();
     }
 
     pub fn setup_turn(&mut self) {
@@ -38,21 +37,21 @@ impl WorldState {
         });
     }
 
-    pub fn get_unmoved_unit(&self, faction: Faction) -> Option<Unit> {
+    pub fn get_unmoved_unit(&self, faction: Faction) -> Option<&Unit> {
         self.units
             .iter()
             .filter(|(_, unit)| unit.faction == faction)
             .find(|(_, unit)| !unit.turn_complete)
-            .map(|(_, unit)| *unit)
+            .map(|(_, unit)| unit)
     }
 
-    pub fn get_unmoved_by_pos(&self, faction: Faction, pos: impl Into<Point>) -> Option<Unit> {
+    pub fn get_unmoved_by_pos(&self, faction: Faction, pos: impl Into<Point>) -> Option<&Unit> {
         let pos = pos.into();
         self.units
             .iter()
             .filter(|(_, unit)| unit.faction == faction && !unit.turn_complete)
             .find(|(_, unit)| unit.pos == pos)
-            .map(|(_, unit)| *unit)
+            .map(|(_, unit)| unit)
     }
 
     pub fn is_tile_empty(&self, pos: impl Into<Point>, except: Option<UnitId>) -> bool {

@@ -45,10 +45,7 @@ impl PlayerSelect {
             .map_or(Point::zero(), |(_, unit)| unit.pos);
 
         Box::new(Self {
-            cursor: Cursor::new(
-                pt,
-                game_ctx.render_context.texture_store.get_key("cursor.png"),
-            ),
+            cursor: Cursor::new(pt, game_ctx.texture_store.get("cursor.png")),
         })
     }
 }
@@ -80,12 +77,16 @@ impl GameState for PlayerSelect {
         }
 
         if game_ctx.controller.clicked(Buttons::A)
-            && let Some(unit) = game_ctx
+            && let &Some(unit) = &game_ctx
                 .world
                 .get_unmoved_by_pos(Faction::Player, self.cursor.get_pos())
         {
             let dijkstra_map = DijkstraMap::new(&game_ctx.world.map, unit, &game_ctx.world.units);
-            return Transition::Push(PlayerMove::boxed_new(unit, dijkstra_map, self.cursor));
+            return Transition::Push(PlayerMove::boxed_new(
+                unit.clone(),
+                dijkstra_map,
+                self.cursor.clone(),
+            ));
         }
 
         Transition::None
@@ -94,7 +95,7 @@ impl GameState for PlayerSelect {
     fn render(&self, game_ctx: &GameContext) {
         game_ctx.render_context.render_sprite(
             self.cursor.get_pos(),
-            self.cursor.texture,
+            &self.cursor.texture,
             WHITE,
             1.2,
         );
@@ -115,8 +116,8 @@ impl PlayerMove {
     }
 }
 impl GameState for PlayerMove {
-    fn active_unit(&self) -> Option<Unit> {
-        Some(self.unit)
+    fn active_unit(&self) -> Option<&Unit> {
+        Some(&self.unit)
     }
     fn update(
         &mut self,
@@ -130,7 +131,7 @@ impl GameState for PlayerMove {
                     return Transition::Push(PlayerAction::boxed_new(unit));
                 }
                 GameMsg::ActionDone => {
-                    msg_queue.push_back(GameMsg::SetCursor(self.cursor));
+                    msg_queue.push_back(GameMsg::SetCursor(self.cursor.clone()));
                     return Transition::Pop;
                 }
 
@@ -150,14 +151,14 @@ impl GameState for PlayerMove {
 
         if game_ctx.controller.clicked(Buttons::A) {
             if self.unit.pos == self.cursor.get_pos() {
-                return Transition::Push(PlayerAction::boxed_new(self.unit));
+                return Transition::Push(PlayerAction::boxed_new(self.unit.clone()));
             }
             if game_ctx
                 .world
                 .is_tile_empty(self.cursor.get_pos(), Some(self.unit.id()))
             {
                 return Transition::Push(MoveAnimation::boxed_new(
-                    self.unit,
+                    self.unit.clone(),
                     self.dijkstra_map.get_path(self.cursor.get_pos()),
                 ));
             }
@@ -178,7 +179,7 @@ impl GameState for PlayerMove {
             });
         game_ctx.render_context.render_sprite(
             self.cursor.get_pos(),
-            self.cursor.texture,
+            &self.cursor.texture,
             WHITE,
             1.2,
         );
@@ -204,8 +205,8 @@ impl PlayerAction {
 
 // TODO Targetables
 impl GameState for PlayerAction {
-    fn active_unit(&self) -> Option<Unit> {
-        Some(self.unit)
+    fn active_unit(&self) -> Option<&Unit> {
+        Some(&self.unit)
     }
     fn update(
         &mut self,
@@ -224,13 +225,13 @@ impl GameState for PlayerAction {
                 self.targetables.clear();
                 if game_ctx.controller.clicked(Buttons::A) {
                     self.unit.turn_complete = true;
-                    commands.push_back(Command::CommitUnit(self.unit));
+                    commands.push_back(Command::CommitUnit(self.unit.clone()));
                     msg_queue.push_back(GameMsg::ActionDone);
                     return Transition::Pop;
                 }
             }
             Self::ATTACK => {
-                self.targetables = get_targetables(self.unit);
+                self.targetables = get_targetables(&self.unit);
             }
             _ => error!(
                 "Unrecognised option: {} in state: {}",

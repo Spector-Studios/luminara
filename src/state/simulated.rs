@@ -48,7 +48,7 @@ impl GameState for SimulatedManager {
         }
         if let Some(unit) = game_ctx.world.get_unmoved_unit(self.faction) {
             let dijkstra_map = DijkstraMap::new(&game_ctx.world.map, unit, &game_ctx.world.units);
-            return Transition::Push(MoveSimulated::boxed_new(unit, dijkstra_map));
+            return Transition::Push(MoveSimulated::boxed_new(unit.clone(), dijkstra_map));
         }
 
         commands.push_back(Command::SetupTurn);
@@ -67,14 +67,14 @@ impl MoveSimulated {
 }
 
 impl GameState for MoveSimulated {
-    fn active_unit(&self) -> Option<Unit> {
-        Some(self.unit)
+    fn active_unit(&self) -> Option<&Unit> {
+        Some(&self.unit)
     }
     fn update(
         &mut self,
         msg_queue: &mut VecDeque<GameMsg>,
-        game_ctx: &GameContext,
-        commands: &mut VecDeque<Command>,
+        _game_ctx: &GameContext,
+        _commands: &mut VecDeque<Command>,
     ) -> Transition {
         if let Some(msg) = msg_queue.pop_front() {
             match msg {
@@ -93,7 +93,7 @@ impl GameState for MoveSimulated {
         let dest = self.dijkstra_map.get_reachables().choose().unwrap();
         let path = self.dijkstra_map.get_path(*dest);
 
-        Transition::Push(MoveAnimation::boxed_new(self.unit, path))
+        Transition::Push(MoveAnimation::boxed_new(self.unit.clone(), path))
     }
 
     fn name(&self) -> &'static str {
@@ -108,8 +108,8 @@ impl ActionSimulated {
 }
 
 impl GameState for ActionSimulated {
-    fn active_unit(&self) -> Option<Unit> {
-        Some(self.unit)
+    fn active_unit(&self) -> Option<&Unit> {
+        Some(&self.unit)
     }
 
     // TODO Maybe not give mutable access to world to states.
@@ -122,7 +122,7 @@ impl GameState for ActionSimulated {
         commands: &mut VecDeque<Command>,
     ) -> Transition {
         self.unit.turn_complete = true;
-        commands.push_back(Command::CommitUnit(self.unit));
+        commands.push_back(Command::CommitUnit(self.unit.clone()));
         msg_queue.push_back(GameMsg::ActionDone);
         Transition::Pop
     }

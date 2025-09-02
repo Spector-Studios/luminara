@@ -1,12 +1,12 @@
-use crate::assets::TextureHandle;
 use crate::math::Point;
 use crate::math::TileRect;
 
 use macroquad::rand::ChooseRandom;
+use macroquad::texture::Texture2D;
 
 pub struct Map {
     terrain: Vec<Terrain>,
-    textures: Vec<TextureHandle>,
+    textures: Vec<Texture2D>,
     pub width: usize,
     pub height: usize,
 }
@@ -23,18 +23,18 @@ impl Map {
         }
     }
 
-    pub fn filled(width: u32, height: u32, grass: TextureHandle, forest: TextureHandle) -> Self {
+    pub fn filled(width: u32, height: u32, grass: &Texture2D, forest: &Texture2D) -> Self {
         let mut map = Self::empty(width, height);
 
         for _ in 0..width * height {
             match [Terrain::Ground, Terrain::Forest].choose().unwrap() {
                 Terrain::Ground => {
                     map.terrain.push(Terrain::Ground);
-                    map.textures.push(grass);
+                    map.textures.push(grass.clone());
                 }
                 Terrain::Forest => {
                     map.terrain.push(Terrain::Forest);
-                    map.textures.push(forest);
+                    map.textures.push(forest.clone());
                 }
 
                 _ => {}
@@ -48,8 +48,8 @@ impl Map {
         *self.terrain.get(self.point_to_idx(pos.into())).unwrap()
     }
 
-    pub fn get_texture_handle(&self, pos: impl Into<Point>) -> TextureHandle {
-        *self.textures.get(self.point_to_idx(pos.into())).unwrap()
+    pub fn get_texture_handle(&self, pos: impl Into<Point>) -> &Texture2D {
+        self.textures.get(self.point_to_idx(pos.into())).unwrap()
     }
 
     pub fn point_to_idx(&self, point: Point) -> usize {

@@ -22,7 +22,7 @@ impl DijkstraMap {
         Point::new(-1, 0),
     ];
 
-    pub fn new(map: &Map, target: Unit, units: &HashMap<UnitId, Unit>) -> Self {
+    pub fn new(map: &Map, target: &Unit, units: &HashMap<UnitId, Unit>) -> Self {
         let mut dijkstra_map = vec![Self::UNREACHABLE; map.width * map.height];
         let mut heap = BinaryHeap::new();
         let mut reachables = Vec::new();
@@ -147,7 +147,7 @@ impl DijkstraMap {
     }
 }
 
-pub fn get_targetables(attacker: Unit) -> Vec<Point> {
+pub fn get_targetables(attacker: &Unit) -> Vec<Point> {
     let start = attacker.pos;
     let range = 2i32; // TODO Get range from unit
 

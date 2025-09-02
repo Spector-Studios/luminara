@@ -1,23 +1,23 @@
 use crate::Map;
-use crate::assets::TextureHandle;
 use crate::math::Point;
 
 use input_lib::ButtonState;
 use input_lib::Controller;
 use macroquad::prelude::get_frame_time;
+use macroquad::texture::Texture2D;
 
 const INITIAL_DELAY: f32 = 0.25;
 const REPEAT_DELAY: f32 = 0.06;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct Cursor {
     pos: Point,
     timer: f32,
-    pub texture: TextureHandle,
+    pub texture: Texture2D,
 }
 
 impl Cursor {
-    pub fn new(pos: Point, texture: TextureHandle) -> Self {
+    pub fn new(pos: Point, texture: Texture2D) -> Self {
         Self {
             pos,
             timer: 0.0,

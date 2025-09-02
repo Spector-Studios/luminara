@@ -1,3 +1,4 @@
+use crate::assets::TextureStore;
 use crate::map::Map;
 use crate::render::RenderContext;
 use crate::state::StateMachine;
@@ -12,14 +13,16 @@ pub struct GameContext {
     pub world: WorldState,
     pub render_context: RenderContext,
     pub controller: Controller,
+    pub texture_store: TextureStore,
 }
 
 impl GameContext {
-    pub fn new(map: Map, render_context: RenderContext) -> Self {
+    pub fn new(map: Map, render_context: RenderContext, texture_store: TextureStore) -> Self {
         Self {
             world: WorldState::new(map),
             controller: Controller::new(),
             render_context,
+            texture_store,
         }
     }
 }
@@ -39,7 +42,7 @@ const UNITS: UnitBuilder = [
     (6, Faction::Enemy, 15, (7, 4), "mage1.png"),
 ];
 impl Engine {
-    pub fn new(map: Map, render_context: RenderContext) -> Self {
+    pub fn new(map: Map, render_context: RenderContext, texture_store: TextureStore) -> Self {
         let mut units = Vec::new();
         for (movement, faction, health, pos, texture) in &UNITS {
             units.push(ErasedUnit {
@@ -50,19 +53,25 @@ impl Engine {
                 max_health: *health,
                 pos: (*pos).into(),
                 render_pos: None,
-                texture_handle: render_context.texture_store.get_key(texture),
+                texture_path: (*texture).to_string(),
                 weapon: None,
             });
         }
 
-        let game_ctx = GameContext::new(map, render_context);
+        let game_ctx = GameContext::new(map, render_context, texture_store);
         let state_machine = StateMachine::new(&game_ctx);
 
         let mut engine = Self {
             state_machine,
             game_context: game_ctx,
         };
-        engine.game_context.world.spawn_units(&units);
+
+        for unit in units {
+            engine
+                .game_context
+                .world
+                .spawn_units(&unit, &engine.game_context.texture_store);
+        }
         engine.game_context.world.setup_turn();
 
         engine

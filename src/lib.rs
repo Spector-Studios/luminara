@@ -40,17 +40,18 @@ pub async fn main() {
     std::panic::set_hook(Box::new(|info| error!("{:?}", info)));
 
     let mut texture_store = TextureStore::new();
-    let grass = texture_store.load("grass1.png");
-    let forest = texture_store.load("forest1.png");
-    let _ = texture_store.load("unit1.png");
-    let _ = texture_store.load("mage1.png");
-    let _ = texture_store.load("cursor.png");
+    texture_store.load("grass1.png");
+    texture_store.load("forest1.png");
+    texture_store.load("unit1.png");
+    texture_store.load("mage1.png");
+    texture_store.load("cursor.png");
 
     texture_store.update().await;
 
-    let map = Map::filled(30, 20, grass, forest);
+    let grass = texture_store.get("grass1.png");
+    let forest = texture_store.get("forest1.png");
+    let map = Map::filled(30, 20, &grass, &forest);
     let render_context = RenderContext::new(
-        texture_store,
         map.width.try_into().unwrap(),
         map.height.try_into().unwrap(),
     );
@@ -58,7 +59,7 @@ pub async fn main() {
     storage::store("Global Storage");
     debug!("{:?}", *storage::get::<&str>());
 
-    let mut game = Engine::new(map, render_context);
+    let mut game = Engine::new(map, render_context, texture_store);
 
     loop {
         clear_background(BLACK);
