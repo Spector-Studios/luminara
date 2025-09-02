@@ -16,6 +16,7 @@ use crate::{assets::TextureStore, game::Engine, map::Map, render::RenderContext}
 
 // use macroquad::experimental::animation;
 use macroquad::experimental::collections::storage;
+use macroquad::prelude::coroutines::start_coroutine;
 use macroquad::prelude::*;
 
 #[allow(dead_code)]
@@ -46,6 +47,27 @@ pub async fn main() {
     texture_store.load("mage1.png");
     texture_store.load("cursor.png");
 
+    let builder = start_coroutine(async move {
+        texture_store.update().await;
+        texture_store
+    });
+
+    let text = "Loading";
+    let font_size = 200;
+    let center = get_text_center(text, None, font_size, 1.0, 0.0);
+    let (x, y) = (
+        screen_width() / 2.0 - center.x,
+        screen_height() / 2.0 - center.y,
+    );
+    let mut texture_store;
+    loop {
+        if builder.is_done() {
+            texture_store = builder.retrieve().unwrap();
+            break;
+        }
+        draw_text(text, x, y, font_size.into(), WHITE);
+        next_frame().await;
+    }
     texture_store.update().await;
 
     let grass = texture_store.get("grass1.png");
