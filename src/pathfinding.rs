@@ -3,11 +3,12 @@ use crate::math::Point;
 use crate::unit::Unit;
 use crate::unit::UnitId;
 
+use std::collections::HashSet;
 use std::collections::{BinaryHeap, HashMap};
 
 #[derive(Debug)]
 pub struct DijkstraMap {
-    reachables: Vec<Point>, // INFO may be make this a Hashset?
+    reachables: HashSet<Point>, // INFO may be make this a Hashset?
     map: Vec<u32>,
     max_distance: u32,
     width: usize,
@@ -25,7 +26,7 @@ impl DijkstraMap {
     pub fn new(map: &Map, target: &Unit, units: &HashMap<UnitId, Unit>) -> Self {
         let mut dijkstra_map = vec![Self::UNREACHABLE; map.width * map.height];
         let mut heap = BinaryHeap::new();
-        let mut reachables = Vec::new();
+        let mut reachables = HashSet::new();
 
         dijkstra_map[map.point_to_idx(target.pos)] = 0;
         heap.push(Node {
@@ -41,7 +42,7 @@ impl DijkstraMap {
                 continue;
             }
 
-            reachables.push(pos);
+            reachables.insert(pos);
 
             for dir in Self::DIRS {
                 let npos = pos + dir;
@@ -87,7 +88,7 @@ impl DijkstraMap {
         }
     }
 
-    pub fn get_reachables(&self) -> &[Point] {
+    pub fn get_reachables(&self) -> &HashSet<Point> {
         &self.reachables
     }
 

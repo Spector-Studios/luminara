@@ -153,9 +153,13 @@ impl GameState for PlayerMove {
             if self.unit.pos == self.cursor.get_pos() {
                 return Transition::Push(PlayerAction::boxed_new(self.unit.clone()));
             }
-            if game_ctx
-                .world
-                .is_tile_empty(self.cursor.get_pos(), Some(self.unit.id()))
+            if self
+                .dijkstra_map
+                .get_reachables()
+                .contains(&self.cursor.get_pos())
+                && game_ctx
+                    .world
+                    .is_tile_empty(self.cursor.get_pos(), Some(self.unit.id()))
             {
                 return Transition::Push(MoveAnimation::boxed_new(
                     self.unit.clone(),
@@ -214,7 +218,7 @@ impl GameState for PlayerAction {
         game_ctx: &GameContext,
         commands: &mut VecDeque<Command>,
     ) -> Transition {
-        self.menu.update(game_ctx.controller.button_state());
+        self.menu.update(&game_ctx.controller);
 
         if game_ctx.controller.clicked(Buttons::B) {
             return Transition::Pop;
