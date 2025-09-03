@@ -1,40 +1,11 @@
-use input_lib::{ButtonState, Controller};
+use crate::render::RenderContext;
+
+use input_lib::Controller;
 use macroquad::{
     color::{BLACK, BLUE, GREEN},
     shapes::draw_rectangle,
     text::draw_text,
 };
-
-use crate::render::RenderContext;
-
-// pub struct UiState {
-//     pub menu: Option<Menu>,
-// }
-
-// impl UiState {
-//     pub fn empty() -> Self {
-//         Self { menu: None }
-//     }
-//     pub fn new() -> Self {
-//         Self {
-//             menu: Some(Menu {
-//                 items: vec![MenuItem::wait(), MenuItem::attack()],
-//                 selected: 0,
-//             }),
-//         }
-//     }
-//     pub fn update(&mut self, input: &ButtonState) {
-//         if let Some(menu) = &mut self.menu {
-//             menu.update(input);
-//         }
-//     }
-
-//     pub fn render(&self, render_ctx: &RenderContext) {
-//         if let Some(menu) = &self.menu {
-//             menu.render(render_ctx);
-//         }
-//     }
-// }
 
 #[derive(Debug)]
 pub struct Menu {

@@ -1,13 +1,11 @@
+use super::state_machine::{Command, Commands, GameMsg, GameState, Transition};
 use crate::game::GameContext;
-use crate::state::Command;
-use macroquad::time::get_frame_time;
-use std::collections::VecDeque;
-
 use crate::math::Point;
-use crate::state::GameMsg;
-use crate::state::GameState;
-use crate::state::Transition;
 use crate::unit::Unit;
+
+use macroquad::time::get_frame_time;
+
+use std::collections::VecDeque;
 
 #[derive(Debug)]
 pub struct MoveAnimation {
@@ -35,7 +33,7 @@ impl GameState for MoveAnimation {
         &mut self,
         msg_queue: &mut VecDeque<GameMsg>,
         _game_ctx: &GameContext,
-        _commands: &mut VecDeque<Command>,
+        commands: &mut Commands,
     ) -> Transition {
         self.timer += get_frame_time();
 
@@ -43,6 +41,7 @@ impl GameState for MoveAnimation {
             if let Some(pos) = self.path.pop() {
                 self.timer = 0.0;
                 self.unit.pos = pos;
+                commands.add(Command::FocusView(pos));
             } else {
                 msg_queue.push_back(GameMsg::MoveAnimationDone(self.unit.clone()));
                 return Transition::Pop;

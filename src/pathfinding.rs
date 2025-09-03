@@ -148,21 +148,19 @@ impl DijkstraMap {
     }
 }
 
-pub fn get_targetables(attacker: &Unit) -> Vec<Point> {
+pub fn get_targetables(attacker: &Unit, into: &mut HashSet<Point>) {
     let start = attacker.pos;
     let range = 2i32; // TODO Get range from unit
 
-    let mut points = Vec::new();
+    into.clear();
 
     for dx in -range..=range {
         for dy in -range..=range {
             if dx.abs() + dy.abs() <= range {
-                points.push(start + (dx, dy).into());
+                into.insert(start + (dx, dy).into());
             }
         }
     }
-
-    points
 }
 
 #[derive(PartialEq, Eq)]

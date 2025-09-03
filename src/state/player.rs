@@ -1,15 +1,15 @@
-use std::collections::VecDeque;
-
 use super::animation::MoveAnimation;
 use super::simulated::SimulatedManager;
+use super::state_machine::{Command, Commands, GameMsg, GameState, Transition};
 use crate::cursor::Cursor;
 use crate::game::GameContext;
 use crate::math::Point;
 use crate::pathfinding::{DijkstraMap, get_targetables};
-use crate::state::{Command, GameMsg, GameState, Transition};
 use crate::ui::Menu;
-use crate::unit::Unit;
+use crate::unit::{Unit, UnitId};
 use crate::world::Faction;
+
+use std::collections::{HashSet, VecDeque};
 
 use input_lib::Buttons;
 use macroquad::color::{Color, WHITE};
@@ -30,9 +30,18 @@ struct PlayerMove {
 
 #[derive(Debug)]
 struct PlayerAction {
-    targetables: Vec<Point>,
+    targetables: HashSet<Point>,
     unit: Unit,
     menu: Menu,
+    cursor: Cursor,
+}
+
+#[derive(Debug)]
+struct PlayerAttck {
+    unit: Unit,
+    cursor: Cursor,
+    targets: Vec<(UnitId, Point)>,
+    selected: usize,
 }
 
 impl PlayerSelect {
@@ -54,11 +63,11 @@ impl GameState for PlayerSelect {
         &mut self,
         msg_queue: &mut VecDeque<GameMsg>,
         game_ctx: &GameContext,
-        commands: &mut VecDeque<Command>,
+        commands: &mut Commands,
     ) -> Transition {
         self.cursor
             .update(&game_ctx.controller, &game_ctx.world.map);
-        commands.push_back(Command::FocusView(self.cursor.get_pos()));
+        commands.add(Command::FocusView(self.cursor.get_pos()));
 
         if let Some(msg) = msg_queue.pop_front() {
             match msg {
@@ -72,7 +81,7 @@ impl GameState for PlayerSelect {
         }
 
         if game_ctx.world.get_unmoved_unit(Faction::Player).is_none() {
-            commands.push_back(Command::SetupTurn);
+            commands.add(Command::SetupTurn);
             return Transition::Switch(Box::new(SimulatedManager::new(Faction::Enemy)));
         }
 
@@ -123,18 +132,13 @@ impl GameState for PlayerMove {
         &mut self,
         msg_queue: &mut VecDeque<GameMsg>,
         game_ctx: &GameContext,
-        commands: &mut VecDeque<Command>,
+        commands: &mut Commands,
     ) -> Transition {
         if let Some(msg) = msg_queue.pop_front() {
             match msg {
                 GameMsg::MoveAnimationDone(unit) => {
-                    return Transition::Push(PlayerAction::boxed_new(unit));
+                    return Transition::Push(PlayerAction::boxed_new(unit, self.cursor.clone()));
                 }
-                GameMsg::ActionDone => {
-                    msg_queue.push_back(GameMsg::SetCursor(self.cursor.clone()));
-                    return Transition::Pop;
-                }
-
                 _ => {
                     warn!("{} state should not receive msg: {:?}", self.name(), msg);
                 }
@@ -143,7 +147,7 @@ impl GameState for PlayerMove {
 
         self.cursor
             .update(&game_ctx.controller, &game_ctx.world.map);
-        commands.push_back(Command::FocusView(self.cursor.get_pos()));
+        commands.add(Command::FocusView(self.cursor.get_pos()));
 
         if game_ctx.controller.clicked(Buttons::B) {
             return Transition::Pop;
@@ -151,7 +155,10 @@ impl GameState for PlayerMove {
 
         if game_ctx.controller.clicked(Buttons::A) {
             if self.unit.pos == self.cursor.get_pos() {
-                return Transition::Push(PlayerAction::boxed_new(self.unit.clone()));
+                return Transition::Push(PlayerAction::boxed_new(
+                    self.unit.clone(),
+                    self.cursor.clone(),
+                ));
             }
             if self
                 .dijkstra_map
@@ -196,13 +203,15 @@ impl GameState for PlayerMove {
 
 impl PlayerAction {
     const ATTACK: &str = "Attack";
+    const SKILL: &str = "Skill";
     const WAIT: &str = "Wait";
 
-    pub fn boxed_new(unit: Unit) -> Box<Self> {
+    pub fn boxed_new(unit: Unit, cursor: Cursor) -> Box<Self> {
         Box::new(Self {
-            targetables: Vec::new(),
+            targetables: HashSet::new(),
             unit,
-            menu: Menu::new(&[Self::ATTACK, Self::WAIT]),
+            cursor,
+            menu: Menu::new(&[Self::ATTACK, Self::WAIT, Self::SKILL]),
         })
     }
 }
@@ -216,7 +225,7 @@ impl GameState for PlayerAction {
         &mut self,
         msg_queue: &mut VecDeque<GameMsg>,
         game_ctx: &GameContext,
-        commands: &mut VecDeque<Command>,
+        commands: &mut Commands,
     ) -> Transition {
         self.menu.update(&game_ctx.controller);
 
@@ -229,13 +238,34 @@ impl GameState for PlayerAction {
                 self.targetables.clear();
                 if game_ctx.controller.clicked(Buttons::A) {
                     self.unit.turn_complete = true;
-                    commands.push_back(Command::CommitUnit(self.unit.clone()));
-                    msg_queue.push_back(GameMsg::ActionDone);
-                    return Transition::Pop;
+                    commands.add(Command::CommitUnit(self.unit.clone()));
+                    msg_queue.push_back(GameMsg::SetCursor(self.cursor.clone()));
+                    return Transition::PopAllButFirst;
                 }
             }
             Self::ATTACK => {
-                self.targetables = get_targetables(&self.unit);
+                get_targetables(&self.unit, &mut self.targetables);
+                if game_ctx.controller.clicked(Buttons::A) {
+                    let opposing_units: Vec<_> = game_ctx
+                        .world
+                        .units
+                        .iter()
+                        .filter(|(_, unit)| unit.faction == Faction::Enemy)
+                        .filter(|(_, unit)| self.targetables.contains(&unit.pos))
+                        .map(|(id, unit)| (*id, unit.pos))
+                        .collect();
+                    if !opposing_units.is_empty() {
+                        return Transition::Push(PlayerAttck::boxed_new(
+                            self.unit.clone(),
+                            self.cursor.clone(),
+                            opposing_units,
+                        ));
+                    }
+                }
+            }
+            Self::SKILL => {
+                // TODO Control from render() if this should render rather than clearing it
+                self.targetables.clear();
             }
             _ => error!(
                 "Unrecognised option: {} in state: {}",
@@ -261,5 +291,60 @@ impl GameState for PlayerAction {
 
     fn name(&self) -> &'static str {
         "Player Action"
+    }
+}
+
+impl PlayerAttck {
+    pub fn boxed_new(unit: Unit, cursor: Cursor, targets: Vec<(UnitId, Point)>) -> Box<Self> {
+        Box::new(Self {
+            unit,
+            cursor,
+            targets,
+            selected: 0,
+        })
+    }
+}
+impl GameState for PlayerAttck {
+    fn update(
+        &mut self,
+        msg_queue: &mut VecDeque<GameMsg>,
+        game_ctx: &GameContext,
+        commands_buffer: &mut Commands,
+    ) -> Transition {
+        if game_ctx.controller.clicked(Buttons::B) {
+            return Transition::Pop;
+        }
+        if game_ctx.controller.clicked(Buttons::A) {
+            self.unit.turn_complete = true;
+            commands_buffer.add(Command::DamageUnit(self.targets[self.selected].0, 3));
+            commands_buffer.add(Command::CommitUnit(self.unit.clone()));
+
+            self.cursor.set_pos(self.unit.pos);
+            msg_queue.push_back(GameMsg::SetCursor(self.cursor.clone()));
+            return Transition::PopAllButFirst;
+        }
+        let input = game_ctx.controller.timed_hold();
+
+        if input.dpad_x > 0 || input.dpad_y > 0 {
+            self.selected = (self.selected + 1) % self.targets.len();
+        } else if input.dpad_x < 0 || input.dpad_y < 0 {
+            self.selected = (self.selected + self.targets.len() - 1) % self.targets.len();
+        }
+
+        self.cursor.set_pos(self.targets[self.selected].1);
+        Transition::None
+    }
+
+    fn render(&self, game_ctx: &GameContext) {
+        game_ctx.render_context.render_sprite(
+            self.cursor.get_pos(),
+            &self.cursor.texture,
+            WHITE,
+            1.0,
+        );
+    }
+
+    fn name(&self) -> &'static str {
+        "Player Attack"
     }
 }

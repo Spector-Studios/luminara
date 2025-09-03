@@ -1,16 +1,13 @@
-use macroquad::logging::warn;
-use macroquad::rand::ChooseRandom;
-
+use super::state_machine::{Command, Commands, GameMsg, GameState, Transition};
+use crate::game::GameContext;
 use crate::pathfinding::DijkstraMap;
-use crate::state::Command;
-use crate::state::GameContext;
-use crate::state::GameMsg;
-use crate::state::GameState;
-use crate::state::Transition;
 use crate::state::animation::MoveAnimation;
 use crate::state::player::PlayerSelect;
 use crate::unit::Unit;
 use crate::world::Faction;
+
+use macroquad::logging::warn;
+use macroquad::rand::ChooseRandom;
 
 use std::collections::VecDeque;
 
@@ -41,17 +38,18 @@ impl GameState for SimulatedManager {
         &mut self,
         msg_queue: &mut VecDeque<GameMsg>,
         game_ctx: &GameContext,
-        commands: &mut VecDeque<Command>,
+        commands: &mut Commands,
     ) -> Transition {
         if let Some(msg) = msg_queue.pop_front() {
             warn!("{} state should not receive msg: {:?}", self.name(), msg);
         }
         if let Some(unit) = game_ctx.world.get_unmoved_unit(self.faction) {
             let dijkstra_map = DijkstraMap::new(&game_ctx.world.map, unit, &game_ctx.world.units);
+            commands.add(Command::FocusView(unit.pos));
             return Transition::Push(MoveSimulated::boxed_new(unit.clone(), dijkstra_map));
         }
 
-        commands.push_back(Command::SetupTurn);
+        commands.add(Command::SetupTurn);
         Transition::Switch(PlayerSelect::boxed_new(game_ctx))
     }
 
@@ -74,15 +72,13 @@ impl GameState for MoveSimulated {
         &mut self,
         msg_queue: &mut VecDeque<GameMsg>,
         _game_ctx: &GameContext,
-        _commands: &mut VecDeque<Command>,
+        _commands: &mut Commands,
     ) -> Transition {
         if let Some(msg) = msg_queue.pop_front() {
             match msg {
+                // TODO May be pass the next state to Animation and have it handle transition?
                 GameMsg::MoveAnimationDone(unit) => {
                     return Transition::Push(ActionSimulated::boxed_new(unit));
-                }
-                GameMsg::ActionDone => {
-                    return Transition::Pop;
                 }
                 _ => {
                     warn!("{} state should not receive msg: {:?}", self.name(), msg);
@@ -90,6 +86,7 @@ impl GameState for MoveSimulated {
             }
         }
 
+        // TODO May be use IndexSet for more efficient random choosing
         let vec_reachables = self
             .dijkstra_map
             .get_reachables()
@@ -124,12 +121,11 @@ impl GameState for ActionSimulated {
         &mut self,
         msg_queue: &mut VecDeque<GameMsg>,
         _game_ctx: &GameContext,
-        commands: &mut VecDeque<Command>,
+        commands: &mut Commands,
     ) -> Transition {
         self.unit.turn_complete = true;
-        commands.push_back(Command::CommitUnit(self.unit.clone()));
-        msg_queue.push_back(GameMsg::ActionDone);
-        Transition::Pop
+        commands.add(Command::CommitUnit(self.unit.clone()));
+        Transition::PopAllButFirst
     }
 
     fn name(&self) -> &'static str {

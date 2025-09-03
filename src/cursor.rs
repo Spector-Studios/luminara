@@ -19,6 +19,10 @@ impl Cursor {
         self.pos
     }
 
+    pub fn set_pos(&mut self, pos: impl Into<Point>) {
+        self.pos = pos.into();
+    }
+
     fn shift(&mut self, delta: impl Into<Point>, map: &Map) {
         self.pos += delta.into();
 
