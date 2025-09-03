@@ -27,7 +27,7 @@ pub enum ButtonKind {
     Action(Buttons),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ButtonState {
     pub dpad_x: i32,
     pub dpad_y: i32,
@@ -36,7 +36,7 @@ pub struct ButtonState {
 
 impl ButtonState {
     #[must_use]
-    pub fn new() -> Self {
+    fn new() -> Self {
         Self {
             dpad_x: 0,
             dpad_y: 0,
@@ -44,7 +44,7 @@ impl ButtonState {
         }
     }
 
-    pub fn reset(&mut self) {
+    fn reset(&mut self) {
         self.dpad_x = 0;
         self.dpad_y = 0;
         self.buttons.clear();
@@ -71,12 +71,15 @@ impl Default for ButtonState {
     }
 }
 
+const INITIAL_DELAY: f32 = 0.25;
+const REPEAT_DELAY: f32 = 0.06;
 pub struct Controller {
     buttons: [(XButton, ButtonKind); 10],
     button_state: ButtonState,
     last_state: ButtonState,
     screen_width: f32,
     screen_height: f32,
+    timer: f32,
 }
 
 impl Controller {
@@ -85,6 +88,9 @@ impl Controller {
         let mut controller = Self {
             screen_width: 0.0,
             screen_height: 0.0,
+            timer: 0.0,
+            button_state: ButtonState::new(),
+            last_state: ButtonState::new(),
             buttons: [
                 (xbutton("↑"), ButtonKind::DPad(DPadButtons::Up)),
                 (xbutton("↓"), ButtonKind::DPad(DPadButtons::Down)),
@@ -97,8 +103,6 @@ impl Controller {
                 (xbutton("Start"), ButtonKind::Action(Buttons::Start)),
                 (xbutton("Select"), ButtonKind::Action(Buttons::Select)),
             ],
-            button_state: ButtonState::new(),
-            last_state: ButtonState::new(),
         };
 
         controller.resize();
@@ -179,6 +183,7 @@ impl Controller {
         {
             self.resize();
         }
+
         self.last_state = self.button_state;
         self.button_state.reset();
         for (btn, flag) in &mut self.buttons {
@@ -187,12 +192,30 @@ impl Controller {
                 self.button_state.set(*flag);
             }
         }
+
+        if self.button_state == ButtonState::default() || self.button_state != self.last_state {
+            self.timer = 0.0;
+        } else {
+            self.timer += get_frame_time();
+        }
     }
 
     #[inline]
     #[must_use]
     pub fn button_state(&self) -> ButtonState {
         self.button_state
+    }
+
+    #[inline]
+    #[must_use]
+    pub fn timed_hold(&self) -> ButtonState {
+        if self.button_state != self.last_state
+            || (self.timer > INITIAL_DELAY
+                && (self.timer - INITIAL_DELAY) % REPEAT_DELAY < get_frame_time())
+        {
+            return self.button_state;
+        }
+        ButtonState::default()
     }
 
     #[inline]

@@ -1,28 +1,18 @@
 use crate::Map;
 use crate::math::Point;
 
-use input_lib::ButtonState;
 use input_lib::Controller;
-use macroquad::prelude::get_frame_time;
 use macroquad::texture::Texture2D;
-
-const INITIAL_DELAY: f32 = 0.25;
-const REPEAT_DELAY: f32 = 0.06;
 
 #[derive(Clone, Debug)]
 pub struct Cursor {
     pos: Point,
-    timer: f32,
     pub texture: Texture2D,
 }
 
 impl Cursor {
     pub fn new(pos: Point, texture: Texture2D) -> Self {
-        Self {
-            pos,
-            timer: 0.0,
-            texture,
-        }
+        Self { pos, texture }
     }
 
     pub fn get_pos(&self) -> Point {
@@ -41,23 +31,8 @@ impl Cursor {
     // TODO require button state instead of full controller
     // TODO this timing logic should be moved to controller as it will be required by menus
     pub fn update(&mut self, controller: &Controller, map: &Map) {
-        let input = controller.button_state();
-        if input == ButtonState::default() {
-            self.timer = 0.0;
-            return;
-        }
+        let input = controller.timed_hold();
         let delta = (input.dpad_x, -input.dpad_y);
-        if input != controller.last_state() {
-            self.shift(delta, map);
-            self.timer = 0.0;
-            return;
-        }
-        self.timer += get_frame_time();
-
-        if self.timer > INITIAL_DELAY
-            && (self.timer - INITIAL_DELAY) % REPEAT_DELAY < get_frame_time()
-        {
-            self.shift(delta, map);
-        }
+        self.shift(delta, map);
     }
 }

@@ -1,4 +1,4 @@
-use input_lib::ButtonState;
+use input_lib::{ButtonState, Controller};
 use macroquad::{
     color::{BLACK, BLUE, GREEN},
     shapes::draw_rectangle,
@@ -49,10 +49,11 @@ impl Menu {
             selected: 0,
         }
     }
-    pub fn update(&mut self, input: ButtonState) {
+    pub fn update(&mut self, controller: &Controller) {
+        let dy = controller.timed_hold().dpad_y;
         self.selected = self
             .selected
-            .saturating_add_signed((-input.dpad_y).try_into().unwrap());
+            .saturating_add_signed((-dy).try_into().unwrap());
         self.selected = self.selected.clamp(0, self.items.len() - 1);
     }
 
