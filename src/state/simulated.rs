@@ -114,12 +114,9 @@ impl GameState for ActionSimulated {
         Some(&self.unit)
     }
 
-    // TODO Maybe not give mutable access to world to states.
-    // TODO States can simply pass on chages to the state machine
-    // TODO which can commit them to the world.
     fn update(
         &mut self,
-        msg_queue: &mut VecDeque<GameMsg>,
+        _msg_queue: &mut VecDeque<GameMsg>,
         _game_ctx: &GameContext,
         commands: &mut Commands,
     ) -> Transition {

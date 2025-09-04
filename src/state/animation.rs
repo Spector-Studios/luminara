@@ -3,6 +3,7 @@ use crate::game::GameContext;
 use crate::math::Point;
 use crate::unit::Unit;
 
+use macroquad::math::Vec2;
 use macroquad::time::get_frame_time;
 
 use std::collections::VecDeque;
@@ -35,17 +36,27 @@ impl GameState for MoveAnimation {
         _game_ctx: &GameContext,
         commands: &mut Commands,
     ) -> Transition {
+        let step_time = 0.15;
         self.timer += get_frame_time();
 
-        if self.timer >= 0.2 {
-            if let Some(pos) = self.path.pop() {
-                self.timer = 0.0;
-                self.unit.pos = pos;
-                commands.add(Command::FocusView(pos));
-            } else {
-                msg_queue.push_back(GameMsg::MoveAnimationDone(self.unit.clone()));
-                return Transition::Pop;
+        if self.path.is_empty() {
+            self.unit.render_pos = None;
+            msg_queue.push_back(GameMsg::MoveAnimationDone(self.unit.clone()));
+            return Transition::Pop;
+        }
+
+        let curr_pos: Vec2 = self.unit.pos.into();
+        let next_pos: Vec2 = (*self.path.last().unwrap()).into();
+        // Normalised
+        let progress = (self.timer / step_time).min(1.0);
+        self.unit.render_pos = Some(curr_pos.lerp(next_pos, progress));
+
+        if self.timer >= step_time {
+            self.unit.pos = self.path.pop().unwrap();
+            if let Some(pos) = self.path.last() {
+                commands.add(Command::FocusView(*pos));
             }
+            self.timer = 0.0;
         }
 
         Transition::None

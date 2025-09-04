@@ -109,7 +109,7 @@ impl RenderContext {
 
     pub fn render_sprite(
         &self,
-        pos: impl Into<Point>,
+        pos: impl Into<Vec2>,
         texture: &Texture2D,
         color: Color,
         scale: f32,
@@ -128,9 +128,14 @@ impl RenderContext {
 
     pub fn render_unit(&self, unit: &Unit) {
         let color = if unit.turn_complete { GRAY } else { WHITE };
-        self.render_sprite(unit.pos, &unit.texture, color, 1.0);
+        self.render_sprite(
+            unit.render_pos.unwrap_or(unit.pos.into()),
+            &unit.texture,
+            color,
+            1.0,
+        );
 
-        let (x, y) = self.screen_pos(unit.pos);
+        let (x, y) = self.screen_pos(unit.render_pos.unwrap_or(unit.pos.into()));
         let (w, h) = (self.tile_size * 0.9, self.tile_size * 0.2);
         let health_frac = (unit.curr_health as f32) / (unit.max_health as f32);
         draw_rectangle(x, y + self.tile_size, w, h, GRAY);
@@ -141,7 +146,7 @@ impl RenderContext {
         }
     }
 
-    pub fn render_tile_rectangle(&self, pos: impl Into<Point>, color: Color) {
+    pub fn render_tile_rectangle(&self, pos: impl Into<Vec2>, color: Color) {
         let (x, y) = self.screen_pos(pos);
         let (w, h) = (self.tile_size, self.tile_size);
         draw_rectangle(x, y, w, h, color);
@@ -151,17 +156,17 @@ impl RenderContext {
         self.view_rect.point_in_rect(pt.into())
     }
 
-    pub fn screen_pos(&self, tile_pos: impl Into<Point>) -> (f32, f32) {
+    pub fn screen_pos(&self, tile_pos: impl Into<Vec2>) -> (f32, f32) {
         let tile_pos = tile_pos.into();
         (self.screen_x(tile_pos.x), self.screen_y(tile_pos.y))
     }
 
-    fn screen_x(&self, tile_x: i32) -> f32 {
-        ((tile_x - self.view_rect.x) as f32) * self.tile_size + self.offset_x
+    fn screen_x(&self, tile_x: f32) -> f32 {
+        (tile_x - self.view_rect.x as f32) * self.tile_size + self.offset_x
     }
 
-    fn screen_y(&self, tile_y: i32) -> f32 {
-        ((tile_y - self.view_rect.y) as f32) * self.tile_size + self.offset_y
+    fn screen_y(&self, tile_y: f32) -> f32 {
+        (tile_y - self.view_rect.y as f32) * self.tile_size + self.offset_y
     }
 
     pub fn offsets(&self) -> (f32, f32) {

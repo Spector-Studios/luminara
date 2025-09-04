@@ -1,3 +1,5 @@
+use macroquad::math::Vec2;
+
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 pub struct Point {
     pub x: i32,
@@ -66,5 +68,12 @@ impl From<(i32, i32)> for Point {
             x: value.0,
             y: value.1,
         }
+    }
+}
+
+#[allow(clippy::cast_precision_loss)]
+impl From<Point> for Vec2 {
+    fn from(val: Point) -> Self {
+        Vec2::new(val.x as f32, val.y as f32)
     }
 }

@@ -40,35 +40,36 @@ pub async fn main() {
     set_default_filter_mode(FilterMode::Nearest);
     std::panic::set_hook(Box::new(|info| error!("{:?}", info)));
 
-    let mut texture_store = TextureStore::new();
-    texture_store.load("grass1.png");
-    texture_store.load("forest1.png");
-    texture_store.load("unit1.png");
-    texture_store.load("mage1.png");
-    texture_store.load("cursor.png");
+    let texture_store;
+    {
+        let builder = start_coroutine(async move {
+            let mut texture_store = TextureStore::new();
+            texture_store.load("grass1.png");
+            texture_store.load("forest1.png");
+            texture_store.load("unit1.png");
+            texture_store.load("mage1.png");
+            texture_store.load("cursor.png");
 
-    let builder = start_coroutine(async move {
-        texture_store.update().await;
-        texture_store
-    });
+            texture_store.update().await;
+            texture_store
+        });
 
-    let text = "Loading";
-    let font_size = 200;
-    let center = get_text_center(text, None, font_size, 1.0, 0.0);
-    let (x, y) = (
-        screen_width() / 2.0 - center.x,
-        screen_height() / 2.0 - center.y,
-    );
-    let mut texture_store;
-    loop {
-        if builder.is_done() {
-            texture_store = builder.retrieve().unwrap();
-            break;
+        let text = "Loading";
+        let font_size = 200;
+        let center = get_text_center(text, None, font_size, 1.0, 0.0);
+        let (x, y) = (
+            screen_width() / 2.0 - center.x,
+            screen_height() / 2.0 - center.y,
+        );
+        loop {
+            if builder.is_done() {
+                texture_store = builder.retrieve().unwrap();
+                break;
+            }
+            draw_text(text, x, y, font_size.into(), WHITE);
+            next_frame().await;
         }
-        draw_text(text, x, y, font_size.into(), WHITE);
-        next_frame().await;
     }
-    texture_store.update().await;
 
     let grass = texture_store.get("grass1.png");
     let forest = texture_store.get("forest1.png");
@@ -88,8 +89,6 @@ pub async fn main() {
 
         game.update();
         game.render();
-
-        draw_multiline_text("Test\nNew Line", 100.0, 100.0, 50.0, None, WHITE);
 
         next_frame().await;
     }
