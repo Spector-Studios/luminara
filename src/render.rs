@@ -127,7 +127,11 @@ impl RenderContext {
     }
 
     pub fn render_unit(&self, unit: &Unit) {
-        let color = if unit.turn_complete { GRAY } else { WHITE };
+        let color = if unit.turn_complete {
+            Color::new(0.75, 0.75, 0.75, 1.0)
+        } else {
+            WHITE
+        };
         self.render_sprite(
             unit.render_pos.unwrap_or(unit.pos.into()),
             &unit.texture,
@@ -140,10 +144,6 @@ impl RenderContext {
         let health_frac = (unit.curr_health as f32) / (unit.max_health as f32);
         draw_rectangle(x, y + self.tile_size, w, h, GRAY);
         draw_rectangle(x, y + self.tile_size, w * health_frac, h, RED);
-
-        if unit.turn_complete {
-            self.render_tile_rectangle(unit.pos, Color::new(0.2, 0.2, 0.2, 0.6));
-        }
     }
 
     pub fn render_tile_rectangle(&self, pos: impl Into<Vec2>, color: Color) {

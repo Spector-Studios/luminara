@@ -136,9 +136,7 @@ impl GameState for PlayerMove {
         if let Some(msg) = msg_queue.pop_front() {
             match msg {
                 GameMsg::MoveAnimationDone(unit) => {
-                    let mut new_cursor = self.cursor.clone();
-                    new_cursor.set_pos(unit.pos);
-                    return Transition::Push(PlayerAction::boxed_new(unit, new_cursor));
+                    return Transition::Push(PlayerAction::boxed_new(unit, self.cursor.clone()));
                 }
                 GameMsg::SetCursor(_) => {
                     warn!("{} state should not receive msg: {:?}", self.name(), msg);
