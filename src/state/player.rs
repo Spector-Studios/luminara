@@ -5,7 +5,7 @@ use crate::cursor::Cursor;
 use crate::game::GameContext;
 use crate::math::Point;
 use crate::pathfinding::{DijkstraMap, get_targetables};
-use crate::ui::Menu;
+use crate::ui::{Menu, MenuItem};
 use crate::unit::{Unit, UnitId};
 use crate::world::Faction;
 
@@ -13,7 +13,6 @@ use std::collections::{HashSet, VecDeque};
 
 use input_lib::Buttons;
 use macroquad::color::{Color, WHITE};
-use macroquad::logging::error;
 use macroquad::prelude::warn;
 
 #[derive(Debug)]
@@ -32,12 +31,12 @@ struct PlayerMove {
 struct PlayerAction {
     targetables: HashSet<Point>,
     unit: Unit,
-    menu: Menu,
+    menu: Menu<PossibleActions>,
     cursor: Cursor,
 }
 
 #[derive(Debug)]
-struct PlayerAttck {
+struct PlayerAttack {
     unit: Unit,
     cursor: Cursor,
     targets: Vec<(UnitId, Point)>,
@@ -65,20 +64,20 @@ impl GameState for PlayerSelect {
         game_ctx: &GameContext,
         commands: &mut Commands,
     ) -> Transition {
-        self.cursor
-            .update(&game_ctx.controller, &game_ctx.world.map);
-        commands.add(Command::FocusView(self.cursor.get_pos()));
-
         if let Some(msg) = msg_queue.pop_front() {
             match msg {
                 GameMsg::SetCursor(cursor) => {
                     self.cursor = cursor;
                 }
-                _ => {
+                GameMsg::MoveAnimationDone(_) => {
                     warn!("{} state should not receive msg: {:?}", self.name(), msg);
                 }
             }
         }
+
+        self.cursor
+            .update(&game_ctx.controller, &game_ctx.world.map);
+        commands.add(Command::FocusView(self.cursor.get_pos()));
 
         if game_ctx.world.get_unmoved_unit(Faction::Player).is_none() {
             commands.add(Command::SetupTurn);
@@ -137,9 +136,11 @@ impl GameState for PlayerMove {
         if let Some(msg) = msg_queue.pop_front() {
             match msg {
                 GameMsg::MoveAnimationDone(unit) => {
-                    return Transition::Push(PlayerAction::boxed_new(unit, self.cursor.clone()));
+                    let mut new_cursor = self.cursor.clone();
+                    new_cursor.set_pos(unit.pos);
+                    return Transition::Push(PlayerAction::boxed_new(unit, new_cursor));
                 }
-                _ => {
+                GameMsg::SetCursor(_) => {
                     warn!("{} state should not receive msg: {:?}", self.name(), msg);
                 }
             }
@@ -202,16 +203,16 @@ impl GameState for PlayerMove {
 }
 
 impl PlayerAction {
-    const ATTACK: &str = "Attack";
-    const SKILL: &str = "Skill";
-    const WAIT: &str = "Wait";
-
     pub fn boxed_new(unit: Unit, cursor: Cursor) -> Box<Self> {
         Box::new(Self {
             targetables: HashSet::new(),
             unit,
             cursor,
-            menu: Menu::new(&[Self::ATTACK, Self::WAIT, Self::SKILL]),
+            menu: Menu::new(&[
+                PossibleActions::Attack,
+                PossibleActions::Skill,
+                PossibleActions::Wait,
+            ]),
         })
     }
 }
@@ -234,44 +235,44 @@ impl GameState for PlayerAction {
         }
 
         match self.menu.selected() {
-            Self::WAIT => {
+            PossibleActions::Wait => 'wait: {
                 self.targetables.clear();
-                if game_ctx.controller.clicked(Buttons::A) {
-                    self.unit.turn_complete = true;
-                    commands.add(Command::CommitUnit(self.unit.clone()));
-                    msg_queue.push_back(GameMsg::SetCursor(self.cursor.clone()));
-                    return Transition::PopAllButFirst;
+                if !game_ctx.controller.clicked(Buttons::A) {
+                    break 'wait;
                 }
+                self.unit.turn_complete = true;
+                commands.add(Command::CommitUnit(self.unit.clone()));
+                msg_queue.push_back(GameMsg::SetCursor(self.cursor.clone()));
+                return Transition::PopAllButFirst;
             }
-            Self::ATTACK => {
+            PossibleActions::Attack => 'attack: {
                 get_targetables(&self.unit, &mut self.targetables);
-                if game_ctx.controller.clicked(Buttons::A) {
-                    let opposing_units: Vec<_> = game_ctx
-                        .world
-                        .units
-                        .iter()
-                        .filter(|(_, unit)| unit.faction == Faction::Enemy)
-                        .filter(|(_, unit)| self.targetables.contains(&unit.pos))
-                        .map(|(id, unit)| (*id, unit.pos))
-                        .collect();
-                    if !opposing_units.is_empty() {
-                        return Transition::Push(PlayerAttck::boxed_new(
-                            self.unit.clone(),
-                            self.cursor.clone(),
-                            opposing_units,
-                        ));
-                    }
+                if !game_ctx.controller.clicked(Buttons::A) {
+                    break 'attack;
                 }
+                let opposing_units: Vec<(UnitId, Point)> = game_ctx
+                    .world
+                    .units
+                    .iter()
+                    .filter(|(_, unit)| unit.faction == Faction::Enemy)
+                    .filter(|(_, unit)| self.targetables.contains(&unit.pos))
+                    .map(|(id, unit)| (*id, unit.pos))
+                    .collect();
+
+                // TODO Attack option shouldn't be shown if this is empty
+                if opposing_units.is_empty() {
+                    break 'attack;
+                }
+                return Transition::Push(PlayerAttack::boxed_new(
+                    self.unit.clone(),
+                    self.cursor.clone(),
+                    opposing_units,
+                ));
             }
-            Self::SKILL => {
+            PossibleActions::Skill => {
                 // TODO Control from render() if this should render rather than clearing it
                 self.targetables.clear();
             }
-            _ => error!(
-                "Unrecognised option: {} in state: {}",
-                self.menu.selected(),
-                self.name()
-            ),
         }
 
         Transition::None
@@ -294,7 +295,7 @@ impl GameState for PlayerAction {
     }
 }
 
-impl PlayerAttck {
+impl PlayerAttack {
     pub fn boxed_new(unit: Unit, cursor: Cursor, targets: Vec<(UnitId, Point)>) -> Box<Self> {
         Box::new(Self {
             unit,
@@ -304,7 +305,7 @@ impl PlayerAttck {
         })
     }
 }
-impl GameState for PlayerAttck {
+impl GameState for PlayerAttack {
     fn update(
         &mut self,
         msg_queue: &mut VecDeque<GameMsg>,
@@ -346,5 +347,22 @@ impl GameState for PlayerAttck {
 
     fn name(&self) -> &'static str {
         "Player Attack"
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum PossibleActions {
+    Attack,
+    Skill,
+    Wait,
+}
+
+impl MenuItem for PossibleActions {
+    fn menu_label(&self) -> &str {
+        match self {
+            Self::Attack => "Attack",
+            Self::Skill => "Skill",
+            Self::Wait => "Wait",
+        }
     }
 }

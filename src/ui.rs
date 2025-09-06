@@ -1,4 +1,5 @@
 use crate::render::RenderContext;
+use std::fmt::Debug;
 
 use input_lib::Controller;
 use macroquad::{
@@ -8,15 +9,15 @@ use macroquad::{
 };
 
 #[derive(Debug)]
-pub struct Menu {
-    items: Vec<MenuItem>,
+pub struct Menu<T: MenuItem> {
+    items: Vec<T>,
     selected: usize,
 }
 
-impl Menu {
-    pub fn new(values: &[&str]) -> Self {
+impl<T: MenuItem> Menu<T> {
+    pub fn new(values: &[T]) -> Self {
         Self {
-            items: values.iter().map(|value| MenuItem::new(value)).collect(),
+            items: values.to_vec(),
             selected: 0,
         }
     }
@@ -28,8 +29,8 @@ impl Menu {
         self.selected = self.selected.clamp(0, self.items.len() - 1);
     }
 
-    pub fn selected(&self) -> &str {
-        &self.items[self.selected].label
+    pub fn selected(&self) -> &T {
+        &self.items[self.selected]
     }
 
     #[allow(clippy::cast_precision_loss)]
@@ -47,20 +48,11 @@ impl Menu {
                 draw_rectangle(x, y + (i as f32 * h), w, h, GREEN);
             }
 
-            draw_text(&item.label, x, y + ((i + 1) as f32 * h), h, BLACK);
+            draw_text(item.menu_label(), x, y + ((i + 1) as f32 * h), h, BLACK);
         });
     }
 }
 
-#[derive(PartialEq, Eq, Debug)]
-pub struct MenuItem {
-    label: String,
-}
-
-impl MenuItem {
-    pub fn new(label: &str) -> Self {
-        Self {
-            label: label.to_string(),
-        }
-    }
+pub trait MenuItem: Copy + PartialEq + Eq + Debug {
+    fn menu_label(&self) -> &str;
 }

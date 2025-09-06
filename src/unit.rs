@@ -14,6 +14,7 @@ use macroquad::texture::Texture2D;
 pub struct Unit {
     id: UnitId,
     pub movement: u32,
+    movement_class: MovementClass,
     pub turn_complete: bool,
     pub faction: Faction,
     pub curr_health: i32,
@@ -29,6 +30,7 @@ impl Unit {
         Self {
             id,
             movement: erased.movement,
+            movement_class: erased.movement_class,
             turn_complete: erased.turn_complete,
             faction: erased.faction,
             curr_health: erased.curr_health,
@@ -39,11 +41,20 @@ impl Unit {
             weapon: erased.weapon,
         }
     }
+
+    #[allow(clippy::match_same_arms)]
     pub fn get_movement_cost(&self, terrain: Terrain) -> u32 {
-        match terrain {
-            Terrain::Ground => 1,
-            Terrain::Forest => 2,
-            Terrain::Mountain | Terrain::River => DijkstraMap::UNREACHABLE,
+        match (self.movement_class, terrain) {
+            // Mounted in Forest
+            (MovementClass::Mounted, Terrain::Forest) => 2,
+            // Flying
+            (MovementClass::Flying, _) => 1,
+            // Infantary in Forest
+            (MovementClass::Infantry, Terrain::Forest) => 1,
+            // Normal Ground
+            (_, Terrain::Ground) => 1,
+            // Impassable
+            (_, Terrain::Mountain | Terrain::River) => DijkstraMap::UNREACHABLE,
         }
     }
 
@@ -55,6 +66,7 @@ impl Unit {
 #[derive(Clone, Debug)]
 pub struct ErasedUnit {
     pub movement: u32,
+    pub movement_class: MovementClass,
     pub turn_complete: bool,
     pub faction: Faction,
     pub curr_health: i32,
@@ -98,4 +110,11 @@ create_id!(UnitId);
 #[derive(Clone, Copy, Debug)]
 pub struct Weapon {
     id: WeaponId,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum MovementClass {
+    Infantry,
+    Mounted,
+    Flying,
 }

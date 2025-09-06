@@ -108,7 +108,6 @@ impl StateMachine {
 pub enum GameMsg {
     MoveAnimationDone(Unit),
     SetCursor(Cursor),
-    SkillSelected,
 }
 
 #[derive(Debug)]

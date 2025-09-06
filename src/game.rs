@@ -3,6 +3,7 @@ use crate::map::Map;
 use crate::render::RenderContext;
 use crate::state::StateMachine;
 use crate::unit::ErasedUnit;
+use crate::unit::MovementClass;
 use crate::world::Faction;
 use crate::world::WorldState;
 
@@ -32,21 +33,23 @@ pub struct Engine {
     game_context: GameContext,
 }
 
-type UnitBuilder = [(u32, Faction, i32, (i32, i32), &'static str); 5];
+type UnitBuilder = [(u32, MovementClass, Faction, i32, (i32, i32), &'static str); 5];
 
+#[rustfmt::skip]
 const UNITS: UnitBuilder = [
-    (5, Faction::Player, 10, (4, 3), "unit1.png"),
-    (7, Faction::Player, 20, (5, 6), "unit1.png"),
-    (7, Faction::Player, 20, (4, 6), "unit1.png"),
-    (5, Faction::Enemy, 15, (4, 5), "mage1.png"),
-    (6, Faction::Enemy, 15, (7, 4), "mage1.png"),
+    (5, MovementClass::Infantry, Faction::Player, 10, (4, 3), "unit1.png"),
+    (7, MovementClass::Mounted, Faction::Player, 20, (5, 6), "unit1.png"),
+    (7, MovementClass::Flying, Faction::Player, 20, (4, 6), "unit1.png"),
+    (5, MovementClass::Infantry, Faction::Enemy, 15, (4, 5), "mage1.png"),
+    (6, MovementClass::Mounted, Faction::Enemy, 15, (7, 4), "mage1.png"),
 ];
 impl Engine {
     pub fn new(map: Map, render_context: RenderContext, texture_store: TextureStore) -> Self {
         let mut units = Vec::new();
-        for (movement, faction, health, pos, texture) in &UNITS {
+        for (movement, movement_class, faction, health, pos, texture) in &UNITS {
             units.push(ErasedUnit {
                 movement: *movement,
+                movement_class: *movement_class,
                 turn_complete: false,
                 faction: *faction,
                 curr_health: *health,
