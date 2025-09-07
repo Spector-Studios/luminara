@@ -26,14 +26,11 @@ impl Cursor {
     fn shift(&mut self, delta: impl Into<Point>, map: &Map) {
         self.pos += delta.into();
 
-        // TODO Implement Ord on Point to make this one line
         self.pos.x = self.pos.x.clamp(0, (map.width - 1).try_into().unwrap());
         self.pos.y = self.pos.y.clamp(0, (map.height - 1).try_into().unwrap());
     }
 
     // TODO store map width and height instead of requiring full map
-    // TODO require button state instead of full controller
-    // TODO this timing logic should be moved to controller as it will be required by menus
     pub fn update(&mut self, controller: &Controller, map: &Map) {
         let input = controller.timed_hold();
         let delta = (input.dpad_x, -input.dpad_y);

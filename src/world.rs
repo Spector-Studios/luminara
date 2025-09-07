@@ -54,6 +54,7 @@ impl WorldState {
     }
 }
 
+// TODO May be move this to unit.rs
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Faction {
     Player,

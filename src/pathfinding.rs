@@ -13,7 +13,6 @@ pub struct DijkstraMap {
     reachables: HashSet<Point>,
     map: Vec<u32>,
     came_from: Vec<Option<Point>>,
-    max_distance: u32,
     start: Point,
     width: usize,
     heigth: usize,
@@ -90,7 +89,6 @@ impl DijkstraMap {
             reachables,
             map: dijkstra_map,
             came_from,
-            max_distance: target.movement,
             start: target.pos,
             width: map.width,
             heigth: map.height,
@@ -135,7 +133,7 @@ impl DijkstraMap {
     #[allow(clippy::cast_sign_loss)]
     fn idx(&self, pos: impl Into<Point>) -> usize {
         let pos = pos.into();
-        assert!(pos >= Point::zero());
+        debug_assert!(pos >= Point::zero());
         (pos.y as usize * self.width) + pos.x as usize
     }
 }

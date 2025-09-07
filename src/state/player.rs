@@ -234,7 +234,6 @@ impl PlayerAction {
     }
 }
 
-// TODO Targetables
 impl GameState for PlayerAction {
     fn active_unit(&self) -> Option<&Unit> {
         Some(&self.unit)
