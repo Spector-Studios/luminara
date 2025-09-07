@@ -188,7 +188,7 @@ impl GameState for PlayerMove {
             {
                 return Transition::Push(MoveAnimation::boxed_new(
                     self.unit.clone(),
-                    self.dijkstra_map.get_path(self.cursor.get_pos()),
+                    self.dijkstra_map.get_path_to(self.cursor.get_pos()),
                 ));
             }
         }

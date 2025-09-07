@@ -93,7 +93,7 @@ impl GameState for MoveSimulated {
             .iter()
             .collect::<Vec<_>>();
         let dest = vec_reachables.choose().unwrap();
-        let path = self.dijkstra_map.get_path(**dest);
+        let path = self.dijkstra_map.get_path_to(**dest);
 
         Transition::Push(MoveAnimation::boxed_new(self.unit.clone(), path))
     }

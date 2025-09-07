@@ -1,3 +1,5 @@
+use macroquad::prelude::warn;
+
 use crate::map::Map;
 use crate::math::Point;
 use crate::unit::Unit;
@@ -8,9 +10,11 @@ use std::collections::{BinaryHeap, HashMap};
 
 #[derive(Debug)]
 pub struct DijkstraMap {
-    reachables: HashSet<Point>, // INFO may be make this a Hashset?
+    reachables: HashSet<Point>,
     map: Vec<u32>,
+    came_from: Vec<Option<Point>>,
     max_distance: u32,
+    start: Point,
     width: usize,
     heigth: usize,
 }
@@ -25,8 +29,10 @@ impl DijkstraMap {
 
     pub fn new(map: &Map, target: &Unit, units: &HashMap<UnitId, Unit>) -> Self {
         let mut dijkstra_map = vec![Self::UNREACHABLE; map.width * map.height];
-        let mut heap = BinaryHeap::new();
+        let mut came_from = vec![None; map.width * map.height];
         let mut reachables = HashSet::new();
+
+        let mut heap = BinaryHeap::new();
 
         dijkstra_map[map.point_to_idx(target.pos)] = 0;
         heap.push(Node {
@@ -70,7 +76,8 @@ impl DijkstraMap {
                 if next_dist <= target.movement
                     && (prev_dist == Self::UNREACHABLE || next_dist < prev_dist)
                 {
-                    dijkstra_map[map.point_to_idx(npos)] = next_dist;
+                    dijkstra_map[next_idx] = next_dist;
+                    came_from[next_idx] = Some(pos);
                     heap.push(Node {
                         pos: npos,
                         dist: next_dist,
@@ -82,7 +89,9 @@ impl DijkstraMap {
         DijkstraMap {
             reachables,
             map: dijkstra_map,
+            came_from,
             max_distance: target.movement,
+            start: target.pos,
             width: map.width,
             heigth: map.height,
         }
@@ -93,50 +102,33 @@ impl DijkstraMap {
     }
 
     /// Caller should ensure the point is reachable
-    pub fn get_path(&self, from: impl Into<Point>) -> Vec<Point> {
-        let from = from.into();
-        let start_d = self.map[self.idx(from)];
-        assert!(start_d != Self::UNREACHABLE);
-
+    pub fn get_path_to(&self, goal: impl Into<Point>) -> Vec<Point> {
+        let goal = goal.into();
         let mut path = Vec::new();
-        let mut current = from;
-        path.push(from);
+        let mut current = goal;
 
-        let max_steps = self.max_distance + 5;
-        for _ in 0..max_steps {
-            let cd = self.map[self.idx(current)];
+        // bail if unreachable
+        debug_assert!(self.map[self.idx(goal)] != Self::UNREACHABLE);
+        if self.map[self.idx(goal)] == Self::UNREACHABLE {
+            warn!("Requesting unreachable path");
+            return path;
+        }
 
-            if cd == 0 {
-                break;
-            }
+        // backtrack using predecessors
+        while current != self.start {
+            path.push(current);
+            if let Some(prev) = self.came_from[self.idx(current)] {
+                current = prev;
+            } else {
+                // shouldn't happen unless goal isn't connected
+                #[cfg(debug_assertions)]
+                panic!("Path not found");
 
-            let mut best = current;
-            let mut best_d = cd;
-
-            for dir in Self::DIRS {
-                let npos = current + dir;
-                if !self.reachables.contains(&npos) {
-                    continue;
-                }
-
-                let nd = self.map[self.idx(npos)];
-                if nd < best_d {
-                    best_d = nd;
-                    best = npos;
-                }
-            }
-
-            if best == current {
-                path.clear();
-                break;
-            }
-
-            current = best;
-            if self.map[self.idx(current)] != 0 {
-                path.push(current);
+                return Vec::new();
             }
         }
 
+        path.push(self.start);
         path
     }
 
