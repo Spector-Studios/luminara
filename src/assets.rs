@@ -16,7 +16,7 @@ impl TextureStore {
         }
     }
 
-    pub fn load(&mut self, path: &str) {
+    pub fn schedule_load(&mut self, path: &str) {
         if self.textures.contains_key(path) {
             return;
         }
@@ -24,7 +24,7 @@ impl TextureStore {
         self.to_load.push(path.to_string());
     }
 
-    pub async fn update(&mut self) {
+    pub async fn load_all(&mut self) {
         for path in self.to_load.drain(0..) {
             let texture = load_texture(&path).await.expect(&path);
             self.textures.insert(path, texture);

@@ -36,7 +36,7 @@ impl Unit {
             curr_health: erased.curr_health,
             max_health: erased.max_health,
             pos: erased.pos,
-            render_pos: erased.render_pos,
+            render_pos: None,
             texture: texture_store.get(&erased.texture_path),
             weapon: erased.weapon,
         }
@@ -72,7 +72,6 @@ pub struct ErasedUnit {
     pub curr_health: i32,
     pub max_health: i32,
     pub pos: Point,
-    pub render_pos: Option<Vec2>,
     pub texture_path: String,
     pub weapon: Option<Weapon>,
 }

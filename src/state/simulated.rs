@@ -80,7 +80,7 @@ impl GameState for MoveSimulated {
                 GameMsg::MoveAnimationDone(unit) => {
                     return Transition::Push(ActionSimulated::boxed_new(unit));
                 }
-                GameMsg::SetCursor(_) => {
+                _ => {
                     warn!("{} state should not receive msg: {:?}", self.name(), msg);
                 }
             }

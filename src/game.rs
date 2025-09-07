@@ -55,29 +55,25 @@ impl Engine {
                 curr_health: *health,
                 max_health: *health,
                 pos: (*pos).into(),
-                render_pos: None,
                 texture_path: (*texture).to_string(),
                 weapon: None,
             });
         }
 
-        let game_ctx = GameContext::new(map, render_context, texture_store);
+        let mut game_ctx = GameContext::new(map, render_context, texture_store);
+        for unit in units {
+            game_ctx.world.spawn_units(&unit, &game_ctx.texture_store);
+        }
+        game_ctx.world.setup_turn();
+
+        // Ensure all operations on game_ctx are done before constructing
+        // the statemachine
         let state_machine = StateMachine::new(&game_ctx);
 
-        let mut engine = Self {
+        Self {
             state_machine,
             game_context: game_ctx,
-        };
-
-        for unit in units {
-            engine
-                .game_context
-                .world
-                .spawn_units(&unit, &engine.game_context.texture_store);
         }
-        engine.game_context.world.setup_turn();
-
-        engine
     }
 
     pub fn update(&mut self) {

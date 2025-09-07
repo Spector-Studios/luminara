@@ -36,7 +36,7 @@ impl<T: MenuItem> Menu<T> {
     #[allow(clippy::cast_precision_loss)]
     // TODO Shift menu position based on cursor pos
     pub fn render(&self, render_ctx: &RenderContext) {
-        let view_rect = render_ctx.view_rect();
+        let view_rect = render_ctx.screen_view_rect();
         let w = view_rect.w * 0.2;
         let h = view_rect.h / 15.0;
         let x = view_rect.x + (view_rect.w * 0.9) - w;

@@ -25,18 +25,17 @@ impl StateMachine {
     pub fn update(&mut self, game_ctx: &mut GameContext) {
         loop {
             game_ctx.controller.update();
-            let transition = match self.stack.last_mut() {
-                Some(state) => {
-                    state.update(&mut self.msg_queue, game_ctx, &mut self.commands_buffer)
-                }
-                None => break,
-            };
-
+            let transition = self.stack.last_mut().unwrap().update(
+                &mut self.msg_queue,
+                game_ctx,
+                &mut self.commands_buffer,
+            );
             self.commands_buffer
                 .drain()
                 .for_each(|command| match command {
                     Command::CommitUnit(unit) => {
                         game_ctx.world.units.insert(unit.id(), unit);
+                        self.msg_queue.push_back(GameMsg::WorldUpdated);
                     }
                     Command::SetupTurn => game_ctx.world.setup_turn(),
                     Command::FocusView(pt) => {
@@ -47,6 +46,7 @@ impl StateMachine {
                     Command::DamageUnit(id, dmg) => {
                         let unit = game_ctx.world.units.get_mut(&id).unwrap();
                         unit.curr_health -= dmg;
+                        self.msg_queue.push_back(GameMsg::WorldUpdated);
                     }
                 });
 
@@ -58,7 +58,6 @@ impl StateMachine {
     }
 
     pub fn render(&self, game_ctx: &GameContext) {
-        // TODO Make a better API for following
         game_ctx.render_context.render_map(&game_ctx.world.map);
         game_ctx.controller.draw(None);
 
@@ -77,6 +76,7 @@ impl StateMachine {
             .filter(|(_, unit)| game_ctx.render_context.in_bounds(unit.pos))
             .filter(|(id, _)| operating_unit.is_none_or(|unit| unit.id() != **id))
             .for_each(|(_, unit)| game_ctx.render_context.render_unit(unit));
+
         if let Some(unit) = operating_unit
             && game_ctx.render_context.in_bounds(unit.pos)
         {
@@ -108,6 +108,7 @@ impl StateMachine {
 pub enum GameMsg {
     MoveAnimationDone(Unit),
     SetCursor(Cursor),
+    WorldUpdated,
 }
 
 #[derive(Debug)]
@@ -159,6 +160,6 @@ impl Commands {
     }
 
     fn drain(&mut self) -> impl Iterator<Item = Command> {
-        self.queue.drain(0..)
+        self.queue.drain(..)
     }
 }

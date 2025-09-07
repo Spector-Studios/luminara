@@ -45,15 +45,6 @@ impl WorldState {
             .map(|(_, unit)| unit)
     }
 
-    pub fn get_unmoved_by_pos(&self, faction: Faction, pos: impl Into<Point>) -> Option<&Unit> {
-        let pos = pos.into();
-        self.units
-            .iter()
-            .filter(|(_, unit)| unit.faction == faction && !unit.turn_complete)
-            .find(|(_, unit)| unit.pos == pos)
-            .map(|(_, unit)| unit)
-    }
-
     pub fn is_tile_empty(&self, pos: impl Into<Point>, except: Option<UnitId>) -> bool {
         let pos = pos.into();
         !self

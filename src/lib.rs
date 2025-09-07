@@ -20,7 +20,7 @@ use macroquad::prelude::coroutines::start_coroutine;
 use macroquad::prelude::*;
 
 #[allow(dead_code)]
-mod _native_glue {
+mod platform {
     #[cfg(target_arch = "wasm32")]
     #[unsafe(no_mangle)]
     pub extern "C" fn main() {
@@ -44,13 +44,13 @@ pub async fn main() {
     {
         let builder = start_coroutine(async move {
             let mut texture_store = TextureStore::new();
-            texture_store.load("grass1.png");
-            texture_store.load("forest1.png");
-            texture_store.load("unit1.png");
-            texture_store.load("mage1.png");
-            texture_store.load("cursor.png");
+            texture_store.schedule_load("grass1.png");
+            texture_store.schedule_load("forest1.png");
+            texture_store.schedule_load("unit1.png");
+            texture_store.schedule_load("mage1.png");
+            texture_store.schedule_load("cursor.png");
 
-            texture_store.update().await;
+            texture_store.load_all().await;
             texture_store
         });
 

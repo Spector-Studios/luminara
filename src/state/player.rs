@@ -9,7 +9,7 @@ use crate::ui::{Menu, MenuItem};
 use crate::unit::{Unit, UnitId};
 use crate::world::Faction;
 
-use std::collections::{HashSet, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 
 use input_lib::Buttons;
 use macroquad::color::{Color, WHITE};
@@ -17,6 +17,7 @@ use macroquad::prelude::warn;
 
 #[derive(Debug)]
 pub struct PlayerSelect {
+    player_units: HashMap<Point, UnitId>,
     cursor: Cursor,
 }
 
@@ -52,9 +53,24 @@ impl PlayerSelect {
             .find(|(_, unit)| unit.faction == Faction::Player)
             .map_or(Point::zero(), |(_, unit)| unit.pos);
 
-        Box::new(Self {
+        let mut state = Self {
+            player_units: HashMap::new(),
             cursor: Cursor::new(pt, game_ctx.texture_store.get("cursor.png")),
-        })
+        };
+        state.update_data(game_ctx);
+
+        Box::new(state)
+    }
+    fn update_data(&mut self, game_ctx: &GameContext) {
+        self.player_units.clear();
+        self.player_units = game_ctx
+            .world
+            .units
+            .iter()
+            .filter(|(_, unit)| unit.faction == Faction::Player)
+            .filter(|(_, unit)| !unit.turn_complete)
+            .map(|(id, unit)| (unit.pos, *id))
+            .collect::<HashMap<Point, UnitId>>();
     }
 }
 impl GameState for PlayerSelect {
@@ -64,10 +80,14 @@ impl GameState for PlayerSelect {
         game_ctx: &GameContext,
         commands: &mut Commands,
     ) -> Transition {
+        // TODO May be drain this instead?
         if let Some(msg) = msg_queue.pop_front() {
             match msg {
                 GameMsg::SetCursor(cursor) => {
                     self.cursor = cursor;
+                }
+                GameMsg::WorldUpdated => {
+                    self.update_data(game_ctx);
                 }
                 GameMsg::MoveAnimationDone(_) => {
                     warn!("{} state should not receive msg: {:?}", self.name(), msg);
@@ -85,10 +105,9 @@ impl GameState for PlayerSelect {
         }
 
         if game_ctx.controller.clicked(Buttons::A)
-            && let &Some(unit) = &game_ctx
-                .world
-                .get_unmoved_by_pos(Faction::Player, self.cursor.get_pos())
+            && let Some(unit_id) = self.player_units.get(&self.cursor.get_pos())
         {
+            let unit = game_ctx.world.units.get(unit_id).unwrap();
             let dijkstra_map = DijkstraMap::new(&game_ctx.world.map, unit, &game_ctx.world.units);
             return Transition::Push(PlayerMove::boxed_new(
                 unit.clone(),
@@ -138,7 +157,7 @@ impl GameState for PlayerMove {
                 GameMsg::MoveAnimationDone(unit) => {
                     return Transition::Push(PlayerAction::boxed_new(unit, self.cursor.clone()));
                 }
-                GameMsg::SetCursor(_) => {
+                _ => {
                     warn!("{} state should not receive msg: {:?}", self.name(), msg);
                 }
             }

@@ -12,7 +12,7 @@ const VIEWPORT_HEIGHT: i32 = 10;
 
 #[derive(Debug)]
 pub struct RenderContext {
-    view_rect: TileRect,
+    map_view_rect: TileRect,
     map_width: i32,
     map_height: i32,
     tile_size: f32,
@@ -25,7 +25,7 @@ pub struct RenderContext {
 impl RenderContext {
     pub fn new(map_width: i32, map_height: i32) -> Self {
         let mut render_context = Self {
-            view_rect: TileRect::with_size(0, 0, VIEWPORT_WIDTH, VIEWPORT_HEIGHT),
+            map_view_rect: TileRect::with_size(0, 0, VIEWPORT_WIDTH, VIEWPORT_HEIGHT),
             map_width,
             map_height,
             tile_size: 0.0,
@@ -42,19 +42,25 @@ impl RenderContext {
         const MARGIN: i32 = 2;
         let cursor_pos = cursor_pos.into();
 
-        if self.view_rect.x > cursor_pos.x - MARGIN {
-            self.view_rect.x -= 1;
-        } else if self.view_rect.x + self.view_rect.w < cursor_pos.x + MARGIN + 1 {
-            self.view_rect.x += 1;
+        if self.map_view_rect.x > cursor_pos.x - MARGIN {
+            self.map_view_rect.x -= 1;
+        } else if self.map_view_rect.x + self.map_view_rect.w < cursor_pos.x + MARGIN + 1 {
+            self.map_view_rect.x += 1;
         }
-        if self.view_rect.y > cursor_pos.y - MARGIN {
-            self.view_rect.y -= 1;
-        } else if self.view_rect.y + self.view_rect.h < cursor_pos.y + MARGIN + 1 {
-            self.view_rect.y += 1;
+        if self.map_view_rect.y > cursor_pos.y - MARGIN {
+            self.map_view_rect.y -= 1;
+        } else if self.map_view_rect.y + self.map_view_rect.h < cursor_pos.y + MARGIN + 1 {
+            self.map_view_rect.y += 1;
         }
 
-        self.view_rect.x = self.view_rect.x.clamp(0, self.map_width - VIEWPORT_WIDTH);
-        self.view_rect.y = self.view_rect.y.clamp(0, self.map_height - VIEWPORT_HEIGHT);
+        self.map_view_rect.x = self
+            .map_view_rect
+            .x
+            .clamp(0, self.map_width - VIEWPORT_WIDTH);
+        self.map_view_rect.y = self
+            .map_view_rect
+            .y
+            .clamp(0, self.map_height - VIEWPORT_HEIGHT);
 
         if (self.screen_size.0 - screen_width()).abs() > 1.0
             || (self.screen_size.1 - screen_height()).abs() > 1.0
@@ -90,19 +96,8 @@ impl RenderContext {
         }
     }
 
-    pub fn map_view_rect(&self) -> &TileRect {
-        &self.view_rect
-    }
-
-    pub fn view_size(&self) -> (f32, f32) {
-        (
-            VIEWPORT_WIDTH as f32 * self.tile_size,
-            VIEWPORT_HEIGHT as f32 * self.tile_size,
-        )
-    }
-
     pub fn render_map(&self, map: &Map) {
-        self.view_rect.for_each(|pt| {
+        self.map_view_rect.for_each(|pt| {
             self.render_sprite(pt, map.get_texture_handle(pt), WHITE, 1.0);
         });
     }
@@ -153,7 +148,7 @@ impl RenderContext {
     }
 
     pub fn in_bounds(&self, pt: impl Into<Point>) -> bool {
-        self.view_rect.point_in_rect(pt.into())
+        self.map_view_rect.point_in_rect(pt.into())
     }
 
     pub fn screen_pos(&self, tile_pos: impl Into<Vec2>) -> (f32, f32) {
@@ -162,18 +157,14 @@ impl RenderContext {
     }
 
     fn screen_x(&self, tile_x: f32) -> f32 {
-        (tile_x - self.view_rect.x as f32) * self.tile_size + self.offset_x
+        (tile_x - self.map_view_rect.x as f32) * self.tile_size + self.offset_x
     }
 
     fn screen_y(&self, tile_y: f32) -> f32 {
-        (tile_y - self.view_rect.y as f32) * self.tile_size + self.offset_y
+        (tile_y - self.map_view_rect.y as f32) * self.tile_size + self.offset_y
     }
 
-    pub fn offsets(&self) -> (f32, f32) {
-        (self.offset_x, self.offset_y)
-    }
-
-    pub fn view_rect(&self) -> Rect {
+    pub fn screen_view_rect(&self) -> Rect {
         Rect {
             x: self.offset_x,
             y: self.offset_y,
