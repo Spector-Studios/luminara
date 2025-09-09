@@ -45,12 +45,9 @@ impl WorldState {
             .map(|(_, unit)| unit)
     }
 
-    pub fn is_tile_empty(&self, pos: impl Into<Point>, except: Option<UnitId>) -> bool {
+    pub fn is_tile_empty(&self, pos: impl Into<Point>) -> bool {
         let pos = pos.into();
-        !self
-            .units
-            .iter()
-            .any(|(id, unit)| unit.pos == pos && Some(*id) != except)
+        !self.units.iter().any(|(_, unit)| unit.pos == pos)
     }
 }
 

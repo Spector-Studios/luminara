@@ -19,7 +19,7 @@ pub struct DijkstraMap {
 }
 impl DijkstraMap {
     pub const UNREACHABLE: u32 = u32::MAX;
-    const DIRS: [Point; 4] = [
+    pub const DIRS: [Point; 4] = [
         Point::new(0, 1),
         Point::new(0, -1),
         Point::new(1, 0),
@@ -138,19 +138,18 @@ impl DijkstraMap {
     }
 }
 
-pub fn get_targetables(attacker: &Unit, into: &mut HashSet<Point>) {
-    let start = attacker.pos;
-    let range = 2i32; // TODO Get range from unit
-
-    into.clear();
+pub fn get_targetables(from: Point, range: i32) -> HashSet<Point> {
+    let mut targetables = HashSet::new();
 
     for dx in -range..=range {
         for dy in -range..=range {
             if dx.abs() + dy.abs() <= range {
-                into.insert(start + (dx, dy).into());
+                targetables.insert(from + (dx, dy).into());
             }
         }
     }
+
+    targetables
 }
 
 #[derive(PartialEq, Eq)]

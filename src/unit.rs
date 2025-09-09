@@ -61,6 +61,11 @@ impl Unit {
     pub fn id(&self) -> UnitId {
         self.id
     }
+
+    pub fn get_attack_range(&self) -> i32 {
+        // TODO Calculate based on weapon and class
+        2
+    }
 }
 
 #[derive(Clone, Debug)]

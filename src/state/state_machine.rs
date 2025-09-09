@@ -5,6 +5,7 @@ use std::fmt::Debug;
 use crate::cursor::Cursor;
 use crate::game::GameContext;
 use crate::math::Point;
+use crate::render::RenderContext;
 use crate::unit::{Unit, UnitId};
 
 #[derive(Debug)]
@@ -59,7 +60,11 @@ impl StateMachine {
 
     pub fn render(&self, game_ctx: &GameContext) {
         game_ctx.render_context.render_map(&game_ctx.world.map);
-        game_ctx.controller.draw(None);
+
+        self.stack
+            .last()
+            .unwrap()
+            .render_map_overlay(&game_ctx.render_context);
 
         let mut operating_unit = None;
         for state in self.stack.iter().rev() {
@@ -83,7 +88,12 @@ impl StateMachine {
             game_ctx.render_context.render_unit(unit);
         }
 
-        self.stack.last().unwrap().render(game_ctx);
+        self.stack
+            .last()
+            .unwrap()
+            .render_ui_layer(&game_ctx.render_context);
+
+        game_ctx.controller.draw(None);
     }
 
     fn apply_transition(&mut self, transition: Transition) {
@@ -128,7 +138,9 @@ pub trait GameState: Debug {
     ) -> Transition;
     fn name(&self) -> &'static str;
 
-    fn render(&self, _game_ctx: &GameContext) {}
+    fn render_map_overlay(&self, _render_ctx: &RenderContext) {}
+    fn render_ui_layer(&self, _render_ctx: &RenderContext) {}
+
     fn active_unit(&self) -> Option<&Unit> {
         None
     }

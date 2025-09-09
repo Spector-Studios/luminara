@@ -62,8 +62,6 @@ impl GameState for MoveAnimation {
         Transition::None
     }
 
-    fn render(&self, _game_ctx: &GameContext) {}
-
     fn name(&self) -> &'static str {
         "Move Animation"
     }

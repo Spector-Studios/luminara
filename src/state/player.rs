@@ -5,6 +5,7 @@ use crate::cursor::Cursor;
 use crate::game::GameContext;
 use crate::math::Point;
 use crate::pathfinding::{DijkstraMap, get_targetables};
+use crate::render::RenderContext;
 use crate::ui::{Menu, MenuItem};
 use crate::unit::{Unit, UnitId};
 use crate::world::Faction;
@@ -12,12 +13,15 @@ use crate::world::Faction;
 use std::collections::{HashMap, HashSet, VecDeque};
 
 use input_lib::Buttons;
-use macroquad::color::{Color, WHITE};
+use macroquad::color::{BLUE, Color, RED, WHITE};
 use macroquad::prelude::warn;
+
+const MARKER_SCALE: f32 = 0.95;
 
 #[derive(Debug)]
 pub struct PlayerSelect {
     player_units: HashMap<Point, UnitId>,
+    enemy_units: HashMap<Point, UnitId>,
     cursor: Cursor,
 }
 
@@ -25,6 +29,7 @@ pub struct PlayerSelect {
 struct PlayerMove {
     unit: Unit,
     dijkstra_map: DijkstraMap,
+    targetables: Vec<Point>,
     cursor: Cursor,
 }
 
@@ -55,6 +60,7 @@ impl PlayerSelect {
 
         let mut state = Self {
             player_units: HashMap::new(),
+            enemy_units: HashMap::with_capacity(10),
             cursor: Cursor::new(pt, game_ctx.texture_store.get("cursor.png")),
         };
         state.update_data(game_ctx);
@@ -71,6 +77,15 @@ impl PlayerSelect {
             .filter(|(_, unit)| !unit.turn_complete)
             .map(|(id, unit)| (unit.pos, *id))
             .collect::<HashMap<Point, UnitId>>();
+
+        self.enemy_units.clear();
+        self.enemy_units = game_ctx
+            .world
+            .units
+            .iter()
+            .filter(|(_, unit)| unit.faction == Faction::Enemy)
+            .map(|(id, unit)| (unit.pos, *id))
+            .collect();
     }
 }
 impl GameState for PlayerSelect {
@@ -104,6 +119,7 @@ impl GameState for PlayerSelect {
             return Transition::Switch(Box::new(SimulatedManager::new(Faction::Enemy)));
         }
 
+        // TODO Show enemy range
         if game_ctx.controller.clicked(Buttons::A)
             && let Some(unit_id) = self.player_units.get(&self.cursor.get_pos())
         {
@@ -119,13 +135,8 @@ impl GameState for PlayerSelect {
         Transition::None
     }
 
-    fn render(&self, game_ctx: &GameContext) {
-        game_ctx.render_context.render_sprite(
-            self.cursor.get_pos(),
-            &self.cursor.texture,
-            WHITE,
-            1.2,
-        );
+    fn render_ui_layer(&self, render_ctx: &RenderContext) {
+        render_ctx.render_sprite(self.cursor.get_pos(), &self.cursor.texture, WHITE, 1.2);
     }
 
     fn name(&self) -> &'static str {
@@ -135,9 +146,27 @@ impl GameState for PlayerSelect {
 
 impl PlayerMove {
     pub fn boxed_new(unit: Unit, dijkstra_map: DijkstraMap, cursor: Cursor) -> Box<Self> {
+        let reachables = dijkstra_map.get_reachables();
+        let edge_tiles: Vec<_> = reachables
+            .iter()
+            .copied()
+            .filter(|pt| {
+                DijkstraMap::DIRS
+                    .iter()
+                    .any(|d_point| !reachables.contains(&(*pt + *d_point)))
+            })
+            .collect();
+
+        let mut targetables = HashSet::new();
+        for tile in edge_tiles {
+            targetables.extend(get_targetables(tile, unit.get_attack_range()));
+        }
+        targetables.retain(|pt| !reachables.contains(pt));
+
         Box::new(Self {
             unit,
             dijkstra_map,
+            targetables: targetables.into_iter().collect(),
             cursor,
         })
     }
@@ -182,9 +211,7 @@ impl GameState for PlayerMove {
                 .dijkstra_map
                 .get_reachables()
                 .contains(&self.cursor.get_pos())
-                && game_ctx
-                    .world
-                    .is_tile_empty(self.cursor.get_pos(), Some(self.unit.id()))
+                && game_ctx.world.is_tile_empty(self.cursor.get_pos())
             {
                 return Transition::Push(MoveAnimation::boxed_new(
                     self.unit.clone(),
@@ -196,22 +223,25 @@ impl GameState for PlayerMove {
         Transition::None
     }
 
-    fn render(&self, game_ctx: &GameContext) {
+    fn render_map_overlay(&self, render_ctx: &RenderContext) {
         self.dijkstra_map
             .get_reachables()
             .iter()
-            .filter(|pt| game_ctx.render_context.in_bounds(**pt))
+            .filter(|pt| render_ctx.in_bounds(**pt))
             .for_each(|pt| {
-                game_ctx
-                    .render_context
-                    .render_tile_rectangle(*pt, Color::new(0.0, 0.0, 1.0, 0.4));
+                render_ctx.render_tile_rectangle(*pt, Color { a: 0.4, ..BLUE }, MARKER_SCALE);
             });
-        game_ctx.render_context.render_sprite(
-            self.cursor.get_pos(),
-            &self.cursor.texture,
-            WHITE,
-            1.2,
-        );
+
+        self.targetables
+            .iter()
+            .filter(|pt| render_ctx.in_bounds(**pt))
+            .for_each(|pt| {
+                render_ctx.render_tile_rectangle(*pt, Color { a: 0.4, ..RED }, MARKER_SCALE);
+            });
+    }
+
+    fn render_ui_layer(&self, render_ctx: &RenderContext) {
+        render_ctx.render_sprite(self.cursor.get_pos(), &self.cursor.texture, WHITE, 1.2);
     }
 
     fn name(&self) -> &'static str {
@@ -262,7 +292,9 @@ impl GameState for PlayerAction {
                 return Transition::PopAllButFirst;
             }
             PossibleActions::Attack => 'attack: {
-                get_targetables(&self.unit, &mut self.targetables);
+                self.targetables.clear();
+                self.targetables
+                    .extend(get_targetables(self.unit.pos, self.unit.get_attack_range()));
                 if !game_ctx.controller.clicked(Buttons::A) {
                     break 'attack;
                 }
@@ -294,16 +326,17 @@ impl GameState for PlayerAction {
         Transition::None
     }
 
-    fn render(&self, game_ctx: &GameContext) {
+    fn render_map_overlay(&self, render_ctx: &RenderContext) {
         self.targetables
             .iter()
-            .filter(|pt| game_ctx.render_context.in_bounds(**pt))
+            .filter(|pt| render_ctx.in_bounds(**pt))
             .for_each(|pt| {
-                game_ctx
-                    .render_context
-                    .render_tile_rectangle(*pt, Color::new(1.0, 0.0, 0.0, 0.4));
+                render_ctx.render_tile_rectangle(*pt, Color { a: 0.4, ..RED }, MARKER_SCALE);
             });
-        self.menu.render(&game_ctx.render_context);
+    }
+
+    fn render_ui_layer(&self, render_ctx: &RenderContext) {
+        self.menu.render(render_ctx);
     }
 
     fn name(&self) -> &'static str {
@@ -352,13 +385,8 @@ impl GameState for PlayerAttack {
         Transition::None
     }
 
-    fn render(&self, game_ctx: &GameContext) {
-        game_ctx.render_context.render_sprite(
-            self.cursor.get_pos(),
-            &self.cursor.texture,
-            WHITE,
-            1.0,
-        );
+    fn render_ui_layer(&self, render_ctx: &RenderContext) {
+        render_ctx.render_sprite(self.cursor.get_pos(), &self.cursor.texture, WHITE, 1.0);
     }
 
     fn name(&self) -> &'static str {

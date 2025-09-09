@@ -141,9 +141,12 @@ impl RenderContext {
         draw_rectangle(x, y + self.tile_size, w * health_frac, h, RED);
     }
 
-    pub fn render_tile_rectangle(&self, pos: impl Into<Vec2>, color: Color) {
-        let (x, y) = self.screen_pos(pos);
-        let (w, h) = (self.tile_size, self.tile_size);
+    pub fn render_tile_rectangle(&self, pos: impl Into<Vec2>, color: Color, scale: f32) {
+        let (mut x, mut y) = self.screen_pos(pos);
+        let (w, h) = (self.tile_size * scale, self.tile_size * scale);
+
+        x += (self.tile_size - w) / 2.0;
+        y += (self.tile_size - h) / 2.0;
         draw_rectangle(x, y, w, h, color);
     }
 
