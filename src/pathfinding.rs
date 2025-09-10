@@ -138,18 +138,16 @@ impl DijkstraMap {
     }
 }
 
-pub fn get_targetables(from: Point, range: i32) -> HashSet<Point> {
-    let mut targetables = HashSet::new();
-
-    for dx in -range..=range {
-        for dy in -range..=range {
-            if dx.abs() + dy.abs() <= range {
-                targetables.insert(from + (dx, dy).into());
+pub fn get_manahattan_neighbours(from: Point, range: i32) -> impl Iterator<Item = Point> {
+    (-range..=range).flat_map(move |dx| {
+        (-range..=range).filter_map(move |dy| {
+            if (dx, dy) == (0, 0) || dx.abs() + dy.abs() > range {
+                None
+            } else {
+                Some(from + (dx, dy))
             }
-        }
-    }
-
-    targetables
+        })
+    })
 }
 
 #[derive(PartialEq, Eq)]

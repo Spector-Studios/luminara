@@ -1,13 +1,12 @@
 use super::state_machine::{Command, Commands, GameMsg, GameState, Transition};
 use crate::game::GameContext;
-use crate::pathfinding::DijkstraMap;
+use crate::pathfinding::{DijkstraMap, get_manahattan_neighbours};
 use crate::state::animation::MoveAnimation;
 use crate::state::player::PlayerSelect;
 use crate::unit::Unit;
 use crate::world::Faction;
 
 use macroquad::logging::warn;
-use macroquad::rand::ChooseRandom;
 
 use std::collections::VecDeque;
 
@@ -71,7 +70,7 @@ impl GameState for MoveSimulated {
     fn update(
         &mut self,
         msg_queue: &mut VecDeque<GameMsg>,
-        _game_ctx: &GameContext,
+        game_ctx: &GameContext,
         _commands: &mut Commands,
     ) -> Transition {
         if let Some(msg) = msg_queue.pop_front() {
@@ -86,14 +85,18 @@ impl GameState for MoveSimulated {
             }
         }
 
-        // TODO May be use IndexSet for more efficient random choosing
-        let vec_reachables = self
-            .dijkstra_map
-            .get_reachables()
-            .iter()
-            .collect::<Vec<_>>();
-        let dest = vec_reachables.choose().unwrap();
-        let path = self.dijkstra_map.get_path_to(**dest);
+        let player_positions = game_ctx
+            .world
+            .units
+            .values()
+            .filter(|unit| unit.faction == Faction::Player)
+            .map(|unit| unit.pos);
+        let neighbours = player_positions.flat_map(|pt| get_manahattan_neighbours(pt, 1));
+        let mut empty_tiles = neighbours.filter(|pt| game_ctx.world.is_tile_empty(*pt));
+        let maybe_dest = empty_tiles.find(|pt| self.dijkstra_map.get_reachables().contains(pt));
+
+        let dest = maybe_dest.unwrap_or(self.unit.pos);
+        let path = self.dijkstra_map.get_path_to(dest);
 
         Transition::Push(MoveAnimation::boxed_new(self.unit.clone(), path))
     }

@@ -36,6 +36,7 @@ impl StateMachine {
                 .for_each(|command| match command {
                     Command::CommitUnit(unit) => {
                         game_ctx.world.units.insert(unit.id(), unit);
+                        // TODO Make this a callback in the state trait instead of a msg
                         self.msg_queue.push_back(GameMsg::WorldUpdated);
                     }
                     Command::SetupTurn => game_ctx.world.setup_turn(),

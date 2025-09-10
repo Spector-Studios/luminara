@@ -54,6 +54,15 @@ impl std::ops::Add for Point {
         }
     }
 }
+impl std::ops::Add<(i32, i32)> for Point {
+    type Output = Self;
+    fn add(self, rhs: (i32, i32)) -> Self::Output {
+        Self {
+            x: self.x + rhs.0,
+            y: self.y + rhs.1,
+        }
+    }
+}
 
 impl std::ops::AddAssign for Point {
     fn add_assign(&mut self, rhs: Self) {

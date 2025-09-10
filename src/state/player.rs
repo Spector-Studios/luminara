@@ -4,7 +4,7 @@ use super::state_machine::{Command, Commands, GameMsg, GameState, Transition};
 use crate::cursor::Cursor;
 use crate::game::GameContext;
 use crate::math::Point;
-use crate::pathfinding::{DijkstraMap, get_targetables};
+use crate::pathfinding::{DijkstraMap, get_manahattan_neighbours};
 use crate::render::RenderContext;
 use crate::ui::{Menu, MenuItem};
 use crate::unit::{Unit, UnitId};
@@ -159,7 +159,7 @@ impl PlayerMove {
 
         let mut targetables = HashSet::new();
         for tile in edge_tiles {
-            targetables.extend(get_targetables(tile, unit.get_attack_range()));
+            targetables.extend(get_manahattan_neighbours(tile, unit.get_attack_range()));
         }
         targetables.retain(|pt| !reachables.contains(pt));
 
@@ -293,8 +293,10 @@ impl GameState for PlayerAction {
             }
             PossibleActions::Attack => 'attack: {
                 self.targetables.clear();
-                self.targetables
-                    .extend(get_targetables(self.unit.pos, self.unit.get_attack_range()));
+                self.targetables.extend(get_manahattan_neighbours(
+                    self.unit.pos,
+                    self.unit.get_attack_range(),
+                ));
                 if !game_ctx.controller.clicked(Buttons::A) {
                     break 'attack;
                 }
