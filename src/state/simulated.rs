@@ -85,6 +85,7 @@ impl GameState for MoveSimulated {
             }
         }
 
+        // TODO Calculate best unit to target / best point to move to
         let player_positions = game_ctx
             .world
             .units
@@ -120,9 +121,21 @@ impl GameState for ActionSimulated {
     fn update(
         &mut self,
         _msg_queue: &mut VecDeque<GameMsg>,
-        _game_ctx: &GameContext,
+        game_ctx: &GameContext,
         commands: &mut Commands,
     ) -> Transition {
+        let target = get_manahattan_neighbours(self.unit.pos, 2).find_map(|pt| {
+            game_ctx
+                .world
+                .units
+                .iter()
+                .find(|(_, unit)| unit.faction == Faction::Player && unit.pos == pt)
+        });
+
+        if let Some((id, _unit)) = target {
+            // TODO Compute damage
+            commands.add(Command::DamageUnit(*id, 5));
+        }
         self.unit.turn_complete = true;
         commands.add(Command::CommitUnit(self.unit.clone()));
         Transition::PopAllButFirst
