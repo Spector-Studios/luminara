@@ -34,11 +34,11 @@ impl RenderContext {
             screen_size: (1.0, 1.0),
         };
 
-        render_context.update((0, 0));
+        render_context.shift_viewport((0, 0));
         render_context
     }
 
-    pub fn update(&mut self, cursor_pos: impl Into<Point>) {
+    pub fn shift_viewport(&mut self, cursor_pos: impl Into<Point>) {
         const MARGIN: i32 = 2;
         let cursor_pos = cursor_pos.into();
 
@@ -61,20 +61,18 @@ impl RenderContext {
             .map_view_rect
             .y
             .clamp(0, self.map_height - VIEWPORT_HEIGHT);
-
-        if (self.screen_size.0 - screen_width()).abs() > 1.0
-            || (self.screen_size.1 - screen_height()).abs() > 1.0
-        {
-            self.resize();
-        }
     }
 
-    fn resize(&mut self) {
+    pub fn resize_if_required(&mut self) {
         const PADDING: f32 = 0.01;
-        info!("Resize viewport");
 
         let sw = screen_width();
         let sh = screen_height();
+        if (self.screen_size.0 - sw).abs() < 1.0 || (self.screen_size.1 - sh).abs() < 1.0 {
+            return;
+        }
+
+        info!("Resizing viewport");
         self.screen_size = (sw, sh);
 
         let drawable_w = sw * (1.0 - 2.0 * PADDING);

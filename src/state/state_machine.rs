@@ -24,6 +24,7 @@ impl StateMachine {
     }
 
     pub fn update(&mut self, game_ctx: &mut GameContext) {
+        game_ctx.render_context.resize_if_required();
         loop {
             game_ctx.controller.update();
             let transition = self.stack.last_mut().unwrap().update(
@@ -43,7 +44,7 @@ impl StateMachine {
                     Command::FocusView(pt) => {
                         // TODO Animate this. Wait for it to finish before proceeding
                         // TODO May push an animation state?
-                        game_ctx.render_context.update(pt);
+                        game_ctx.render_context.shift_viewport(pt);
                     }
                     Command::DamageUnit(id, dmg) => {
                         let unit = game_ctx.world.units.get_mut(&id).unwrap();

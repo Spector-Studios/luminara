@@ -26,6 +26,7 @@ impl TextureStore {
 
     pub async fn load_all(&mut self) {
         for path in self.to_load.drain(0..) {
+            // TODO Join all the futures or start seperate coroutines to run all this in parallel
             let texture = load_texture(&path).await.expect(&path);
             self.textures.insert(path, texture);
         }
