@@ -337,8 +337,8 @@ impl GameState for PlayerAction {
             });
     }
 
-    fn render_ui_layer(&self, render_ctx: &RenderContext) {
-        self.menu.render(render_ctx);
+    fn render_ui_layer(&self, _render_ctx: &RenderContext) {
+        self.menu.render();
     }
 
     fn name(&self) -> &'static str {
