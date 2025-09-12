@@ -55,6 +55,5 @@ impl WorldState {
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Faction {
     Player,
-    Neutral,
     Enemy,
 }

@@ -1,7 +1,10 @@
-use super::player::PlayerSelect;
+use macroquad::camera::set_default_camera;
+use macroquad::prelude::set_camera;
+
 use std::collections::VecDeque;
 use std::fmt::Debug;
 
+use super::player::PlayerSelect;
 use crate::cursor::Cursor;
 use crate::game::GameContext;
 use crate::math::Point;
@@ -61,6 +64,7 @@ impl StateMachine {
     }
 
     pub fn render(&self, game_ctx: &GameContext) {
+        set_camera(game_ctx.render_context.camera_ref());
         game_ctx.render_context.render_map(&game_ctx.world.map);
 
         self.stack
@@ -95,6 +99,7 @@ impl StateMachine {
             .unwrap()
             .render_ui_layer(&game_ctx.render_context);
 
+        set_default_camera();
         game_ctx.controller.draw(None);
     }
 

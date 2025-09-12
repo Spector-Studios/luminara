@@ -62,6 +62,7 @@ impl Unit {
         self.id
     }
 
+    // TODO Return a Range<i32> to allow for minimum attack range
     pub fn get_attack_range(&self) -> i32 {
         // TODO Calculate based on weapon and class
         2
@@ -72,13 +73,15 @@ impl Unit {
 pub struct ErasedUnit {
     pub movement: u32,
     pub movement_class: MovementClass,
-    pub turn_complete: bool,
     pub faction: Faction,
     pub curr_health: i32,
     pub max_health: i32,
     pub pos: Point,
     pub texture_path: String,
     pub weapon: Option<Weapon>,
+
+    // TODO This should probably be removed
+    pub turn_complete: bool,
 }
 
 macro_rules! create_id {
