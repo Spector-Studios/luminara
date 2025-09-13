@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
-use macroquad::texture::{Texture2D, load_texture};
+use macroquad::texture::Texture2D;
+use macroquad::texture::load_texture;
 
 #[derive(Debug)]
 pub struct TextureStore {

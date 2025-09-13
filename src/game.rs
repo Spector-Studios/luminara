@@ -12,7 +12,7 @@ use macroquad::prelude::*;
 
 pub struct GameContext {
     pub world: WorldState,
-    pub render_context: RenderContext,
+    pub render_ctx: RenderContext,
     pub controller: Controller,
     pub texture_store: TextureStore,
 }
@@ -22,7 +22,7 @@ impl GameContext {
         Self {
             world: WorldState::new(map),
             controller: Controller::new(),
-            render_context,
+            render_ctx: render_context,
             texture_store,
         }
     }
@@ -66,8 +66,7 @@ impl Engine {
         }
         game_ctx.world.setup_turn();
 
-        // Ensure all operations on game_ctx are done before constructing
-        // the statemachine
+        // WARN Ensure all operations on game_ctx are done before constructing the statemachine
         let state_machine = StateMachine::new(&game_ctx);
 
         Self {
