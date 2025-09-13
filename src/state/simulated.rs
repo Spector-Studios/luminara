@@ -1,11 +1,13 @@
 use super::state_machine::{Command, Commands, GameMsg, GameState, Transition};
-use crate::game::GameContext;
+use crate::assets::TextureStore;
 use crate::pathfinding::{DijkstraMap, get_manahattan_neighbours};
+use crate::render::RenderContext;
 use crate::state::animation::MoveAnimation;
 use crate::state::player::PlayerSelect;
 use crate::unit::Unit;
-use crate::world::Faction;
+use crate::world::{Faction, WorldState};
 
+use input_lib::Controller;
 use macroquad::logging::warn;
 
 use std::collections::VecDeque;
@@ -36,20 +38,23 @@ impl GameState for SimulatedManager {
     fn update(
         &mut self,
         msg_queue: &mut VecDeque<GameMsg>,
-        game_ctx: &GameContext,
         commands: &mut Commands,
+        world: &WorldState,
+        _render_ctx: &mut RenderContext,
+        _controller: &Controller,
+        texture_store: &TextureStore,
     ) -> Transition {
         if let Some(msg) = msg_queue.pop_front() {
             warn!("{} state should not receive msg: {:?}", self.name(), msg);
         }
-        if let Some(unit) = game_ctx.world.get_unmoved_unit(self.faction) {
-            let dijkstra_map = DijkstraMap::new(&game_ctx.world.map, unit, &game_ctx.world.units);
+        if let Some(unit) = world.get_unmoved_unit(self.faction) {
+            let dijkstra_map = DijkstraMap::new(&world.map, unit, &world.units);
             commands.add(Command::FocusView(unit.pos));
             return Transition::Push(MoveSimulated::boxed_new(unit.clone(), dijkstra_map));
         }
 
         commands.add(Command::SetupTurn);
-        Transition::Switch(PlayerSelect::boxed_new(game_ctx))
+        Transition::Switch(PlayerSelect::boxed_new(world, texture_store))
     }
 
     fn name(&self) -> &'static str {
@@ -70,8 +75,11 @@ impl GameState for MoveSimulated {
     fn update(
         &mut self,
         msg_queue: &mut VecDeque<GameMsg>,
-        game_ctx: &GameContext,
         _commands: &mut Commands,
+        world: &WorldState,
+        _render_ctx: &mut RenderContext,
+        _controller: &Controller,
+        _texture_store: &TextureStore,
     ) -> Transition {
         if let Some(msg) = msg_queue.pop_front() {
             match msg {
@@ -86,14 +94,13 @@ impl GameState for MoveSimulated {
         }
 
         // TODO Calculate best unit to target / best point to move to
-        let player_positions = game_ctx
-            .world
+        let player_positions = world
             .units
             .values()
             .filter(|unit| unit.faction == Faction::Player)
             .map(|unit| unit.pos);
         let neighbours = player_positions.flat_map(|pt| get_manahattan_neighbours(pt, 1));
-        let mut empty_tiles = neighbours.filter(|pt| game_ctx.world.is_tile_empty(*pt));
+        let mut empty_tiles = neighbours.filter(|pt| world.is_tile_empty(*pt));
         let maybe_dest = empty_tiles.find(|pt| self.dijkstra_map.get_reachables().contains(pt));
 
         let dest = maybe_dest.unwrap_or(self.unit.pos);
@@ -121,12 +128,14 @@ impl GameState for ActionSimulated {
     fn update(
         &mut self,
         _msg_queue: &mut VecDeque<GameMsg>,
-        game_ctx: &GameContext,
         commands: &mut Commands,
+        world: &WorldState,
+        _render_ctx: &mut RenderContext,
+        _controller: &Controller,
+        _texture_store: &TextureStore,
     ) -> Transition {
         let target = get_manahattan_neighbours(self.unit.pos, 2).find_map(|pt| {
-            game_ctx
-                .world
+            world
                 .units
                 .iter()
                 .find(|(_, unit)| unit.faction == Faction::Player && unit.pos == pt)

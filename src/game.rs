@@ -66,8 +66,7 @@ impl Engine {
         }
         game_ctx.world.setup_turn();
 
-        // Ensure all operations on game_ctx are done before constructing
-        // the statemachine
+        // WARN Ensure all operations on game_ctx are done before constructing the statemachine
         let state_machine = StateMachine::new(&game_ctx);
 
         Self {

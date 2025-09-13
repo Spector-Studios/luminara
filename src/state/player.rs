@@ -1,18 +1,18 @@
 use super::animation::MoveAnimation;
 use super::simulated::SimulatedManager;
 use super::state_machine::{Command, Commands, GameMsg, GameState, Transition};
+use crate::assets::TextureStore;
 use crate::cursor::Cursor;
-use crate::game::GameContext;
 use crate::math::Point;
 use crate::pathfinding::{DijkstraMap, get_manahattan_neighbours};
 use crate::render::RenderContext;
 use crate::ui::{Menu, MenuItem};
 use crate::unit::{Unit, UnitId};
-use crate::world::Faction;
+use crate::world::{Faction, WorldState};
 
 use std::collections::{HashMap, HashSet, VecDeque};
 
-use input_lib::Buttons;
+use input_lib::{Buttons, Controller};
 use macroquad::color::{BLUE, Color, RED, WHITE};
 use macroquad::prelude::warn;
 
@@ -50,9 +50,8 @@ struct PlayerAttack {
 }
 
 impl PlayerSelect {
-    pub fn boxed_new(game_ctx: &GameContext) -> Box<Self> {
-        let pt = game_ctx
-            .world
+    pub fn boxed_new(world: &WorldState, texture_store: &TextureStore) -> Box<Self> {
+        let pt = world
             .units
             .iter()
             .find(|(_, unit)| unit.faction == Faction::Player)
@@ -61,16 +60,15 @@ impl PlayerSelect {
         let mut state = Self {
             player_units: HashMap::new(),
             enemy_units: HashMap::with_capacity(10),
-            cursor: Cursor::new(pt, game_ctx.texture_store.get("cursor.png")),
+            cursor: Cursor::new(pt, texture_store.get("cursor.png")),
         };
-        state.update_data(game_ctx);
+        state.update_data(world);
 
         Box::new(state)
     }
-    fn update_data(&mut self, game_ctx: &GameContext) {
+    fn update_data(&mut self, world: &WorldState) {
         self.player_units.clear();
-        self.player_units = game_ctx
-            .world
+        self.player_units = world
             .units
             .iter()
             .filter(|(_, unit)| unit.faction == Faction::Player)
@@ -79,8 +77,7 @@ impl PlayerSelect {
             .collect::<HashMap<Point, UnitId>>();
 
         self.enemy_units.clear();
-        self.enemy_units = game_ctx
-            .world
+        self.enemy_units = world
             .units
             .iter()
             .filter(|(_, unit)| unit.faction == Faction::Enemy)
@@ -92,8 +89,11 @@ impl GameState for PlayerSelect {
     fn update(
         &mut self,
         msg_queue: &mut VecDeque<GameMsg>,
-        game_ctx: &GameContext,
         commands: &mut Commands,
+        world: &WorldState,
+        _render_ctx: &mut RenderContext,
+        controller: &Controller,
+        _texture_store: &TextureStore,
     ) -> Transition {
         // TODO May be drain this instead?
         if let Some(msg) = msg_queue.pop_front() {
@@ -102,7 +102,7 @@ impl GameState for PlayerSelect {
                     self.cursor = cursor;
                 }
                 GameMsg::WorldUpdated => {
-                    self.update_data(game_ctx);
+                    self.update_data(world);
                 }
                 GameMsg::MoveAnimationDone(_) => {
                     warn!("{} state should not receive msg: {:?}", self.name(), msg);
@@ -110,21 +110,20 @@ impl GameState for PlayerSelect {
             }
         }
 
-        self.cursor
-            .update(&game_ctx.controller, &game_ctx.world.map);
+        self.cursor.update(controller, &world.map);
         commands.add(Command::FocusView(self.cursor.get_pos()));
 
-        if game_ctx.world.get_unmoved_unit(Faction::Player).is_none() {
+        if world.get_unmoved_unit(Faction::Player).is_none() {
             commands.add(Command::SetupTurn);
             return Transition::Switch(Box::new(SimulatedManager::new(Faction::Enemy)));
         }
 
         // TODO Show enemy range
-        if game_ctx.controller.clicked(Buttons::A)
+        if controller.clicked(Buttons::A)
             && let Some(unit_id) = self.player_units.get(&self.cursor.get_pos())
         {
-            let unit = game_ctx.world.units.get(unit_id).unwrap();
-            let dijkstra_map = DijkstraMap::new(&game_ctx.world.map, unit, &game_ctx.world.units);
+            let unit = world.units.get(unit_id).unwrap();
+            let dijkstra_map = DijkstraMap::new(&world.map, unit, &world.units);
             return Transition::Push(PlayerMove::boxed_new(
                 unit.clone(),
                 dijkstra_map,
@@ -135,8 +134,10 @@ impl GameState for PlayerSelect {
         Transition::None
     }
 
-    fn render_ui_layer(&self, render_ctx: &RenderContext) {
+    fn render_ui_layer(&self, render_ctx: &RenderContext) -> Option<()> {
         render_ctx.render_sprite(self.cursor.get_pos(), &self.cursor.texture, WHITE, 1.2);
+
+        Some(())
     }
 
     fn name(&self) -> &'static str {
@@ -178,8 +179,11 @@ impl GameState for PlayerMove {
     fn update(
         &mut self,
         msg_queue: &mut VecDeque<GameMsg>,
-        game_ctx: &GameContext,
         commands: &mut Commands,
+        world: &WorldState,
+        _render_ctx: &mut RenderContext,
+        controller: &Controller,
+        _texture_store: &TextureStore,
     ) -> Transition {
         if let Some(msg) = msg_queue.pop_front() {
             match msg {
@@ -192,15 +196,14 @@ impl GameState for PlayerMove {
             }
         }
 
-        self.cursor
-            .update(&game_ctx.controller, &game_ctx.world.map);
+        self.cursor.update(controller, &world.map);
         commands.add(Command::FocusView(self.cursor.get_pos()));
 
-        if game_ctx.controller.clicked(Buttons::B) {
+        if controller.clicked(Buttons::B) {
             return Transition::Pop;
         }
 
-        if game_ctx.controller.clicked(Buttons::A) {
+        if controller.clicked(Buttons::A) {
             if self.unit.pos == self.cursor.get_pos() {
                 return Transition::Push(PlayerAction::boxed_new(
                     self.unit.clone(),
@@ -211,7 +214,7 @@ impl GameState for PlayerMove {
                 .dijkstra_map
                 .get_reachables()
                 .contains(&self.cursor.get_pos())
-                && game_ctx.world.is_tile_empty(self.cursor.get_pos())
+                && world.is_tile_empty(self.cursor.get_pos())
             {
                 return Transition::Push(MoveAnimation::boxed_new(
                     self.unit.clone(),
@@ -223,25 +226,29 @@ impl GameState for PlayerMove {
         Transition::None
     }
 
-    fn render_map_overlay(&self, render_ctx: &RenderContext) {
+    fn render_map_overlay(&self, render_ctx: &RenderContext) -> Option<()> {
         self.dijkstra_map
             .get_reachables()
             .iter()
-            .filter(|pt| render_ctx.in_bounds(**pt))
+            .filter(|pt| render_ctx.is_point_visible(**pt))
             .for_each(|pt| {
                 render_ctx.render_tile_rectangle(*pt, Color { a: 0.4, ..BLUE }, MARKER_SCALE);
             });
 
         self.targetables
             .iter()
-            .filter(|pt| render_ctx.in_bounds(**pt))
+            .filter(|pt| render_ctx.is_point_visible(**pt))
             .for_each(|pt| {
                 render_ctx.render_tile_rectangle(*pt, Color { a: 0.4, ..RED }, MARKER_SCALE);
             });
+
+        Some(())
     }
 
-    fn render_ui_layer(&self, render_ctx: &RenderContext) {
+    fn render_ui_layer(&self, render_ctx: &RenderContext) -> Option<()> {
         render_ctx.render_sprite(self.cursor.get_pos(), &self.cursor.texture, WHITE, 1.2);
+
+        Some(())
     }
 
     fn name(&self) -> &'static str {
@@ -271,19 +278,22 @@ impl GameState for PlayerAction {
     fn update(
         &mut self,
         msg_queue: &mut VecDeque<GameMsg>,
-        game_ctx: &GameContext,
         commands: &mut Commands,
+        world: &WorldState,
+        _render_ctx: &mut RenderContext,
+        controller: &Controller,
+        _texture_store: &TextureStore,
     ) -> Transition {
-        self.menu.update(&game_ctx.controller);
+        self.menu.update(controller);
 
-        if game_ctx.controller.clicked(Buttons::B) {
+        if controller.clicked(Buttons::B) {
             return Transition::Pop;
         }
 
         match self.menu.selected() {
             PossibleActions::Wait => 'wait: {
                 self.targetables.clear();
-                if !game_ctx.controller.clicked(Buttons::A) {
+                if !controller.clicked(Buttons::A) {
                     break 'wait;
                 }
                 self.unit.turn_complete = true;
@@ -297,11 +307,10 @@ impl GameState for PlayerAction {
                     self.unit.pos,
                     self.unit.get_attack_range(),
                 ));
-                if !game_ctx.controller.clicked(Buttons::A) {
+                if !controller.clicked(Buttons::A) {
                     break 'attack;
                 }
-                let opposing_units: Vec<(UnitId, Point)> = game_ctx
-                    .world
+                let opposing_units: Vec<(UnitId, Point)> = world
                     .units
                     .iter()
                     .filter(|(_, unit)| unit.faction == Faction::Enemy)
@@ -328,17 +337,21 @@ impl GameState for PlayerAction {
         Transition::None
     }
 
-    fn render_map_overlay(&self, render_ctx: &RenderContext) {
+    fn render_map_overlay(&self, render_ctx: &RenderContext) -> Option<()> {
         self.targetables
             .iter()
-            .filter(|pt| render_ctx.in_bounds(**pt))
+            .filter(|pt| render_ctx.is_point_visible(**pt))
             .for_each(|pt| {
                 render_ctx.render_tile_rectangle(*pt, Color { a: 0.4, ..RED }, MARKER_SCALE);
             });
+
+        Some(())
     }
 
-    fn render_ui_layer(&self, _render_ctx: &RenderContext) {
+    fn render_ui_layer(&self, _render_ctx: &RenderContext) -> Option<()> {
         self.menu.render();
+
+        Some(())
     }
 
     fn name(&self) -> &'static str {
@@ -360,13 +373,16 @@ impl GameState for PlayerAttack {
     fn update(
         &mut self,
         msg_queue: &mut VecDeque<GameMsg>,
-        game_ctx: &GameContext,
         commands_buffer: &mut Commands,
+        _world: &WorldState,
+        _render_ctx: &mut RenderContext,
+        controller: &Controller,
+        _texture_store: &TextureStore,
     ) -> Transition {
-        if game_ctx.controller.clicked(Buttons::B) {
+        if controller.clicked(Buttons::B) {
             return Transition::Pop;
         }
-        if game_ctx.controller.clicked(Buttons::A) {
+        if controller.clicked(Buttons::A) {
             self.unit.turn_complete = true;
             commands_buffer.add(Command::DamageUnit(self.targets[self.selected].0, 3));
             commands_buffer.add(Command::CommitUnit(self.unit.clone()));
@@ -375,7 +391,7 @@ impl GameState for PlayerAttack {
             msg_queue.push_back(GameMsg::SetCursor(self.cursor.clone()));
             return Transition::PopAllButFirst;
         }
-        let input = game_ctx.controller.timed_hold();
+        let input = controller.timed_hold();
 
         if input.dpad_x > 0 || input.dpad_y > 0 {
             self.selected = (self.selected + 1) % self.targets.len();
@@ -387,8 +403,10 @@ impl GameState for PlayerAttack {
         Transition::None
     }
 
-    fn render_ui_layer(&self, render_ctx: &RenderContext) {
+    fn render_ui_layer(&self, render_ctx: &RenderContext) -> Option<()> {
         render_ctx.render_sprite(self.cursor.get_pos(), &self.cursor.texture, WHITE, 1.0);
+
+        Some(())
     }
 
     fn name(&self) -> &'static str {
