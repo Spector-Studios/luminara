@@ -74,6 +74,7 @@ impl Default for ButtonState {
 const INITIAL_DELAY: f32 = 0.25;
 const REPEAT_DELAY: f32 = 0.06;
 pub struct Controller {
+    // TODO This should probably be a Vec or HashMap
     buttons: [(XButton, ButtonKind); 10],
     button_state: ButtonState,
     last_state: ButtonState,
