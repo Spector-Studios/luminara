@@ -1,6 +1,8 @@
 use crate::assets::TextureStore;
 use crate::map::Map;
 use crate::render::RenderContext;
+use crate::render::RenderCtxWithViewport;
+use crate::render::Viewport;
 use crate::state::StateMachine;
 use crate::unit::ErasedUnit;
 use crate::unit::MovementClass;
@@ -13,18 +15,43 @@ use macroquad::prelude::*;
 pub struct GameContext {
     pub world: WorldState,
     pub render_ctx: RenderContext,
+    pub viewport: Viewport,
     pub controller: Controller,
     pub texture_store: TextureStore,
 }
 
+pub struct GameCtxView<'a> {
+    pub world: &'a WorldState,
+    pub controller: &'a Controller,
+    pub texture_store: &'a TextureStore,
+    pub viewport: &'a mut Viewport,
+}
+
 impl GameContext {
-    pub fn new(map: Map, render_context: RenderContext, texture_store: TextureStore) -> Self {
+    pub fn new(map: Map, texture_store: TextureStore) -> Self {
         Self {
+            viewport: Viewport::new(
+                map.width.try_into().unwrap(),
+                map.height.try_into().unwrap(),
+            ),
             world: WorldState::new(map),
             controller: Controller::new(),
-            render_ctx: render_context,
+            render_ctx: RenderContext::new(),
             texture_store,
         }
+    }
+
+    pub fn get_view(&'_ mut self) -> GameCtxView<'_> {
+        GameCtxView {
+            world: &self.world,
+            controller: &self.controller,
+            texture_store: &self.texture_store,
+            viewport: &mut self.viewport,
+        }
+    }
+
+    pub fn get_render_view(&'_ self) -> RenderCtxWithViewport<'_> {
+        RenderCtxWithViewport::new(&self.render_ctx, &self.viewport)
     }
 }
 
@@ -44,7 +71,7 @@ const UNITS: UnitBuilder = [
     (6, MovementClass::Mounted, Faction::Enemy, 15, (7, 4), "mage1.png"),
 ];
 impl Engine {
-    pub fn new(map: Map, render_context: RenderContext, texture_store: TextureStore) -> Self {
+    pub fn new(map: Map, texture_store: TextureStore) -> Self {
         let mut units = Vec::new();
         for (movement, movement_class, faction, health, pos, texture) in &UNITS {
             units.push(ErasedUnit {
@@ -60,7 +87,7 @@ impl Engine {
             });
         }
 
-        let mut game_ctx = GameContext::new(map, render_context, texture_store);
+        let mut game_ctx = GameContext::new(map, texture_store);
         for unit in units {
             game_ctx.world.spawn_units(&unit, &game_ctx.texture_store);
         }

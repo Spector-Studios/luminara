@@ -1,11 +1,9 @@
 use super::state_machine::{Command, Commands, GameMsg, GameState, Transition};
-use crate::assets::TextureStore;
-use crate::math::Point;
-use crate::render::RenderContext;
+use crate::game::GameCtxView;
+use crate::math::{Point, TileRect};
+use crate::render::Viewport;
 use crate::unit::Unit;
-use crate::world::WorldState;
 
-use input_lib::Controller;
 use macroquad::math::Vec2;
 use macroquad::prelude::Rect;
 use macroquad::time::get_frame_time;
@@ -24,6 +22,7 @@ pub struct MoveAnimation {
 #[derive(Debug)]
 pub struct ShiftMapView {
     target_rect: Rect,
+    target_tilerect: TileRect,
 }
 
 impl MoveAnimation {
@@ -45,10 +44,7 @@ impl GameState for MoveAnimation {
         &mut self,
         msg_queue: &mut VecDeque<GameMsg>,
         commands: &mut Commands,
-        _world: &WorldState,
-        _render_ctx: &mut RenderContext,
-        _controller: &Controller,
-        _texture_store: &TextureStore,
+        _game_ctx: GameCtxView,
     ) -> Transition {
         self.timer += get_frame_time();
 
@@ -81,29 +77,32 @@ impl GameState for MoveAnimation {
 }
 
 impl ShiftMapView {
-    pub fn boxed_new(dest: impl Into<Vec2>, render_ctx: &RenderContext) -> Option<Box<Self>> {
-        const MARGIN: f32 = 2.0;
-        const TOLERANCE: f32 = 1e-3;
+    pub fn boxed_new(dest: impl Into<Point>, viewport: &Viewport) -> Option<Box<Self>> {
+        const MARGIN: i32 = 2;
 
+        assert!(viewport.render_view.is_none());
         let dest = dest.into();
-        let mut target_rect = render_ctx.map_view_rect;
+        let mut target_rect = viewport.map_view;
 
-        let min_x = dest.x - target_rect.w + MARGIN + 1.0;
+        let min_x = dest.x - target_rect.w + MARGIN + 1;
         let max_x = dest.x - MARGIN;
         target_rect.x = target_rect.x.clamp(min_x, max_x);
 
-        let min_y = dest.y - target_rect.h + MARGIN + 1.0;
+        let min_y = dest.y - target_rect.h + MARGIN + 1;
         let max_y = dest.y - MARGIN;
         target_rect.y = target_rect.y.clamp(min_y, max_y);
 
-        target_rect = render_ctx.get_clamped_map_viewport(target_rect);
-        if (target_rect.x - render_ctx.map_view_rect.x).abs() < TOLERANCE
-            && (target_rect.y - render_ctx.map_view_rect.y).abs() < TOLERANCE
-        {
+        target_rect = viewport.clamp_tilerect_to_map(target_rect);
+
+        // TODO Move this logic to the call site
+        if target_rect == viewport.map_view {
             return None;
         }
 
-        Some(Box::new(Self { target_rect }))
+        Some(Box::new(Self {
+            target_rect: target_rect.into(),
+            target_tilerect: target_rect,
+        }))
     }
 }
 impl GameState for ShiftMapView {
@@ -111,34 +110,35 @@ impl GameState for ShiftMapView {
         &mut self,
         _msg_queue: &mut VecDeque<GameMsg>,
         _commands_buffer: &mut Commands,
-        _world: &WorldState,
-        render_ctx: &mut RenderContext,
-        _controller: &Controller,
-        _texture_store: &TextureStore,
+        game_ctx: GameCtxView,
     ) -> Transition {
-        const STEP_SIZE: f32 = 0.5;
+        const STEP_SIZE: f32 = 0.2;
         const SNAP_TOLERANCE: f32 = 1e-3;
 
-        let map_rect = &mut render_ctx.map_view_rect;
+        let mut render_rect = game_ctx.viewport.get_render_rect();
 
-        let dx = self.target_rect.x - map_rect.x;
-        let dy = self.target_rect.y - map_rect.y;
+        let dx = self.target_rect.x - render_rect.x;
+        let dy = self.target_rect.y - render_rect.y;
         if dx.abs() > 0.0 || dy.abs() > 0.0 {
             let shift_x = dx.signum() * dx.abs().min(STEP_SIZE);
             let shift_y = dy.signum() * dy.abs().min(STEP_SIZE);
 
-            map_rect.x += shift_x;
-            map_rect.y += shift_y;
+            render_rect.x += shift_x;
+            render_rect.y += shift_y;
 
-            if (map_rect.x - self.target_rect.x).abs() < SNAP_TOLERANCE {
-                map_rect.x = self.target_rect.x;
+            if (render_rect.x - self.target_rect.x).abs() < SNAP_TOLERANCE {
+                render_rect.x = self.target_rect.x;
             }
-            if (map_rect.y - self.target_rect.y).abs() < SNAP_TOLERANCE {
-                map_rect.y = self.target_rect.y;
+            if (render_rect.y - self.target_rect.y).abs() < SNAP_TOLERANCE {
+                render_rect.y = self.target_rect.y;
             }
+
+            game_ctx.viewport.render_view = Some(render_rect);
             return Transition::None;
         }
 
+        game_ctx.viewport.map_view = self.target_tilerect;
+        game_ctx.viewport.render_view = None;
         Transition::Pop
     }
 

@@ -12,7 +12,7 @@ mod ui;
 mod unit;
 mod world;
 
-use crate::{assets::TextureStore, game::Engine, map::Map, render::RenderContext};
+use crate::{assets::TextureStore, game::Engine, map::Map};
 
 // use macroquad::experimental::animation;
 use macroquad::experimental::collections::storage;
@@ -74,15 +74,11 @@ pub async fn main() {
     let grass = texture_store.get("grass1.png");
     let forest = texture_store.get("forest1.png");
     let map = Map::filled(30, 20, &grass, &forest);
-    let render_context = RenderContext::new(
-        map.width.try_into().unwrap(),
-        map.height.try_into().unwrap(),
-    );
 
     storage::store("Global Storage");
     debug!("{:?}", *storage::get::<&str>());
 
-    let mut game = Engine::new(map, render_context, texture_store);
+    let mut game = Engine::new(map, texture_store);
 
     loop {
         clear_background(BLACK);

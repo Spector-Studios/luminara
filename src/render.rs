@@ -1,7 +1,7 @@
 use std::f32;
 
 use crate::map::Map;
-use crate::math::Point;
+use crate::math::{Point, TileRect};
 use crate::unit::Unit;
 
 use macroquad::prelude::vec2;
@@ -17,21 +17,20 @@ const TILE_SIZE: i32 = VIEWPORT_WIDTH / VIEWPORT_TILES_WIDTH;
 
 #[allow(clippy::cast_precision_loss)]
 const VIEWPORT_TILES_WIDTH_F: f32 = VIEWPORT_TILES_WIDTH as f32;
+#[allow(clippy::cast_precision_loss)]
 const VIEWPORT_TILES_HEIGHT_F: f32 = VIEWPORT_TILES_HEIGHT as f32;
+#[allow(clippy::cast_precision_loss)]
 const TILE_SIZE_F: f32 = TILE_SIZE as f32;
 
 #[derive(Debug)]
 pub struct RenderContext {
     view_camera: Camera2D,
-    pub map_view_rect: Rect,
-    map_width: f32,
-    map_height: f32,
     screen_size: (f32, f32),
 }
 
 #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
 impl RenderContext {
-    pub fn new(map_width: i32, map_height: i32) -> Self {
+    pub fn new() -> Self {
         let view_camera = Camera2D {
             offset: vec2(-1.0, 1.0),
             ..Default::default()
@@ -39,21 +38,11 @@ impl RenderContext {
 
         let mut render_context = Self {
             view_camera,
-            map_view_rect: Rect::new(0.0, 0.0, VIEWPORT_TILES_WIDTH_F, VIEWPORT_TILES_HEIGHT_F),
-            map_width: map_width as f32,
-            map_height: map_height as f32,
             screen_size: (1.0, 1.0),
         };
 
         render_context.resize_if_required();
         render_context
-    }
-
-    pub fn get_clamped_map_viewport(&self, mut rect: Rect) -> Rect {
-        rect.x = rect.x.clamp(0.0, self.map_width - VIEWPORT_TILES_WIDTH_F);
-        rect.y = rect.y.clamp(0.0, self.map_height - VIEWPORT_TILES_HEIGHT_F);
-
-        rect
     }
 
     pub fn resize_if_required(&mut self) {
@@ -86,30 +75,32 @@ impl RenderContext {
         &self.view_camera
     }
 
-    pub fn render_map(&self, map: &Map) {
-        let start_x = self.map_view_rect.left().floor().max(0.0) as i32;
-        let start_y = self.map_view_rect.top().floor().max(0.0) as i32;
+    pub fn render_map(map: &Map, viewport: &Viewport) {
+        let view_rect = viewport.get_render_rect();
 
-        let end_x = self.map_view_rect.right().ceil().min(self.map_width) as i32;
-        let end_y = self.map_view_rect.bottom().ceil().min(self.map_height) as i32;
+        let start_x = view_rect.left().floor().max(0.0) as i32;
+        let start_y = view_rect.top().floor().max(0.0) as i32;
+
+        let end_x = (view_rect.right().ceil() as i32).min(viewport.map_width);
+        let end_y = (view_rect.bottom().ceil() as i32).min(viewport.map_height);
 
         for y in start_y..end_y {
             for x in start_x..end_x {
                 let pt: Point = (x, y).into();
-                self.render_sprite(pt, map.get_texture_handle(pt), WHITE, 1.0);
+                Self::render_sprite(pt, map.get_texture_handle(pt), WHITE, 1.0, viewport);
             }
         }
     }
 
     pub fn render_sprite(
-        &self,
         pos: impl Into<Vec2>,
         texture: &Texture2D,
         color: Color,
         scale: f32,
+        viewport: &Viewport,
     ) {
         // TODO Rewrite this
-        let (mut x, mut y) = self.screen_pos(pos);
+        let (mut x, mut y) = Self::screen_pos(pos, viewport.get_render_rect());
         let padding = ((1.0 - scale) / 2.0) * TILE_SIZE_F;
         (x, y) = (x + padding, y + padding);
         let params = DrawTextureParams {
@@ -120,28 +111,37 @@ impl RenderContext {
         draw_texture_ex(texture, x, y, color, params);
     }
 
-    pub fn render_unit(&self, unit: &Unit) {
+    pub fn render_unit(&self, unit: &Unit, viewport: &Viewport) {
         let color = if unit.turn_complete {
             Color::new(0.75, 0.75, 0.75, 1.0)
         } else {
             WHITE
         };
-        self.render_sprite(
+        Self::render_sprite(
             unit.render_pos.unwrap_or(unit.pos.into()),
             &unit.texture,
             color,
             1.0,
+            viewport,
         );
 
-        let (x, y) = self.screen_pos(unit.render_pos.unwrap_or(unit.pos.into()));
+        let (x, y) = Self::screen_pos(
+            unit.render_pos.unwrap_or(unit.pos.into()),
+            viewport.get_render_rect(),
+        );
         let (w, h) = (TILE_SIZE_F * 0.9, TILE_SIZE_F * 0.2);
         let health_frac = (unit.curr_health as f32) / (unit.max_health as f32);
         draw_rectangle(x, y + TILE_SIZE_F, w, h, GRAY);
         draw_rectangle(x, y + TILE_SIZE_F, w * health_frac, h, RED);
     }
 
-    pub fn render_tile_rectangle(&self, pos: impl Into<Vec2>, color: Color, scale: f32) {
-        let (mut x, mut y) = self.screen_pos(pos);
+    pub fn render_tile_rectangle(
+        pos: impl Into<Vec2>,
+        color: Color,
+        scale: f32,
+        viewport: &Viewport,
+    ) {
+        let (mut x, mut y) = Self::screen_pos(pos, viewport.get_render_rect());
         let (w, h) = (TILE_SIZE_F * scale, TILE_SIZE_F * scale);
 
         x += (TILE_SIZE_F - w) / 2.0;
@@ -149,35 +149,20 @@ impl RenderContext {
         draw_rectangle(x, y, w, h, color);
     }
 
-    pub fn is_point_visible(&self, pt: impl Into<Vec2>) -> bool {
-        let pt = pt.into();
-
-        pt.x >= self.map_view_rect.left().floor()
-            && pt.x <= self.map_view_rect.right().ceil()
-            && pt.y >= self.map_view_rect.top().floor()
-            && pt.y <= self.map_view_rect.bottom().ceil()
-    }
-
-    pub fn is_point_focused(&self, pt: impl Into<Vec2>) -> bool {
-        let pt = pt.into();
-
-        pt.x >= self.map_view_rect.left().ceil()
-            && pt.x <= self.map_view_rect.right().floor()
-            && pt.y >= self.map_view_rect.top().ceil()
-            && pt.y <= self.map_view_rect.bottom().floor()
-    }
-
-    pub fn screen_pos(&self, tile_pos: impl Into<Vec2>) -> (f32, f32) {
+    pub fn screen_pos(tile_pos: impl Into<Vec2>, render_rect: Rect) -> (f32, f32) {
         let tile_pos = tile_pos.into();
-        (self.screen_x(tile_pos.x), self.screen_y(tile_pos.y))
+        (
+            Self::screen_x(tile_pos.x, &render_rect),
+            Self::screen_y(tile_pos.y, &render_rect),
+        )
     }
 
-    fn screen_x(&self, tile_x: f32) -> f32 {
-        (tile_x - self.map_view_rect.x) * TILE_SIZE_F
+    fn screen_x(tile_x: f32, render_rect: &Rect) -> f32 {
+        (tile_x - render_rect.x) * TILE_SIZE_F
     }
 
-    fn screen_y(&self, tile_y: f32) -> f32 {
-        (tile_y - self.map_view_rect.y) * TILE_SIZE_F
+    fn screen_y(tile_y: f32, render_rect: &Rect) -> f32 {
+        (tile_y - render_rect.y) * TILE_SIZE_F
     }
 
     pub fn screen_view_rect() -> Rect {
@@ -187,5 +172,76 @@ impl RenderContext {
             w: VIEWPORT_WIDTH as f32,
             h: VIEWPORT_HEIGHT as f32,
         }
+    }
+}
+
+#[derive(Debug)]
+pub struct Viewport {
+    pub map_view: TileRect,
+    pub render_view: Option<Rect>,
+    map_width: i32,
+    map_height: i32,
+}
+impl Viewport {
+    pub fn new(map_width: i32, map_height: i32) -> Self {
+        Self {
+            map_view: TileRect::with_size(0, 0, VIEWPORT_TILES_WIDTH, VIEWPORT_TILES_HEIGHT),
+            render_view: None,
+            map_width,
+            map_height,
+        }
+    }
+
+    pub fn get_render_rect(&self) -> Rect {
+        self.render_view.unwrap_or_else(|| self.map_view.into())
+    }
+
+    pub fn is_point_visible(&self, pt: impl Into<Vec2>) -> bool {
+        let render_rect = self.get_render_rect();
+        let pt = pt.into();
+
+        pt.x >= render_rect.left().floor()
+            && pt.x <= render_rect.right().ceil()
+            && pt.y >= render_rect.top().floor()
+            && pt.y <= render_rect.bottom().ceil()
+    }
+
+    pub fn clamp_tilerect_to_map(&self, mut rect: TileRect) -> TileRect {
+        rect.x = rect.x.clamp(0, self.map_width - VIEWPORT_TILES_WIDTH);
+        rect.y = rect.y.clamp(0, self.map_height - VIEWPORT_TILES_HEIGHT);
+
+        rect
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct RenderCtxWithViewport<'a> {
+    render_ctx: &'a RenderContext,
+    pub viewport: &'a Viewport,
+}
+impl<'a> RenderCtxWithViewport<'a> {
+    pub fn new(render_ctx: &'a RenderContext, viewport: &'a Viewport) -> Self {
+        Self {
+            render_ctx,
+            viewport,
+        }
+    }
+
+    pub fn is_tile_visible(&self, pt: impl Into<Vec2>) -> bool {
+        self.viewport.is_point_visible(pt)
+    }
+
+    pub fn render_tile_rectangle(&self, pos: impl Into<Vec2>, color: Color, scale: f32) {
+        RenderContext::render_tile_rectangle(pos, color, scale, self.viewport);
+    }
+
+    pub fn render_sprite(
+        &self,
+        pos: impl Into<Vec2>,
+        texture: &Texture2D,
+        color: Color,
+        scale: f32,
+    ) {
+        RenderContext::render_sprite(pos, texture, color, scale, self.viewport);
     }
 }

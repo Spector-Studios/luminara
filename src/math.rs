@@ -1,4 +1,4 @@
-use macroquad::math::Vec2;
+use macroquad::math::{Rect, Vec2};
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 pub struct Point {
@@ -84,5 +84,17 @@ impl From<(i32, i32)> for Point {
 impl From<Point> for Vec2 {
     fn from(val: Point) -> Self {
         Vec2::new(val.x as f32, val.y as f32)
+    }
+}
+
+#[allow(clippy::cast_precision_loss)]
+impl From<TileRect> for Rect {
+    fn from(value: TileRect) -> Self {
+        Self {
+            x: value.x as f32,
+            y: value.y as f32,
+            w: value.w as f32,
+            h: value.h as f32,
+        }
     }
 }
