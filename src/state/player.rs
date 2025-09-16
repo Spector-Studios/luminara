@@ -87,6 +87,9 @@ impl PlayerSelect {
     }
 }
 impl GameState for PlayerSelect {
+    fn on_enter(&self, _game_ctx: GameCtxView) {
+        _game_ctx.viewport.set_center_on(self.cursor.get_pos());
+    }
     fn update(
         &mut self,
         msg_queue: &mut VecDeque<GameMsg>,
@@ -107,9 +110,12 @@ impl GameState for PlayerSelect {
                 }
             }
         }
+        if game_ctx.viewport.is_centering() {
+            return Transition::None;
+        }
 
         self.cursor.update(game_ctx.controller, &game_ctx.world.map);
-        commands.add(Command::FocusView(self.cursor.get_pos()));
+        game_ctx.viewport.set_follow(self.cursor.get_pos());
 
         if game_ctx.world.get_unmoved_unit(Faction::Player).is_none() {
             commands.add(Command::SetupTurn);
@@ -192,7 +198,7 @@ impl GameState for PlayerMove {
         }
 
         self.cursor.update(game_ctx.controller, &game_ctx.world.map);
-        commands.add(Command::FocusView(self.cursor.get_pos()));
+        game_ctx.viewport.set_follow(self.cursor.get_pos());
 
         if game_ctx.controller.clicked(Buttons::B) {
             return Transition::Pop;

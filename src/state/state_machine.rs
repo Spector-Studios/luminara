@@ -10,7 +10,7 @@ use crate::game::{GameContext, GameCtxView};
 use crate::math::Point;
 use crate::render::RenderContext;
 use crate::render::RenderCtxWithViewport;
-use crate::state::animation::ShiftMapView;
+// use crate::state::animation::ShiftMapView;
 use crate::unit::{Unit, UnitId};
 
 #[derive(Debug)]
@@ -33,7 +33,6 @@ impl StateMachine {
 
     pub fn update(&mut self, game_ctx: &mut GameContext) {
         game_ctx.render_ctx.resize_if_required();
-        let mut view_shift_state = None;
 
         loop {
             game_ctx.controller.update();
@@ -51,9 +50,6 @@ impl StateMachine {
                         self.msg_queue.push_back(GameMsg::WorldUpdated);
                     }
                     Command::SetupTurn => game_ctx.world.setup_turn(),
-                    Command::FocusView(pt) => {
-                        view_shift_state = ShiftMapView::boxed_new(pt, &game_ctx.viewport);
-                    }
                     Command::DamageUnit(id, dmg) => {
                         let unit = game_ctx.world.units.get_mut(&id).unwrap();
                         unit.curr_health -= dmg;
@@ -63,13 +59,10 @@ impl StateMachine {
 
             match transition {
                 Transition::None => break,
-                _ => self.apply_transition(transition),
+                _ => self.apply_transition(transition, game_ctx.get_view()),
             }
         }
-
-        if let Some(state) = view_shift_state {
-            self.stack.push(state);
-        }
+        game_ctx.viewport.update();
     }
 
     pub fn render(&self, game_ctx: &GameContext) {
@@ -97,12 +90,12 @@ impl StateMachine {
             .iter()
             .filter(|(_, unit)| game_ctx.viewport.is_point_visible(unit.pos))
             .filter(|(id, _)| operating_unit.is_none_or(|unit| unit.id() != **id))
-            .for_each(|(_, unit)| game_ctx.render_ctx.render_unit(unit, &game_ctx.viewport));
+            .for_each(|(_, unit)| RenderContext::render_unit(unit, &game_ctx.viewport));
 
         if let Some(unit) = operating_unit
             && game_ctx.viewport.is_point_visible(unit.pos)
         {
-            game_ctx.render_ctx.render_unit(unit, &game_ctx.viewport);
+            RenderContext::render_unit(unit, &game_ctx.viewport);
         }
 
         self.stack
@@ -114,15 +107,19 @@ impl StateMachine {
         game_ctx.controller.draw(None);
     }
 
-    fn apply_transition(&mut self, transition: Transition) {
+    fn apply_transition(&mut self, transition: Transition, game_ctx: GameCtxView) {
         match transition {
             Transition::None => {}
             Transition::Pop => {
                 self.stack.pop();
             }
-            Transition::Push(game_state) => self.stack.push(game_state),
+            Transition::Push(game_state) => {
+                game_state.on_enter(game_ctx);
+                self.stack.push(game_state);
+            }
             Transition::Switch(game_state) => {
                 self.stack.pop();
+                game_state.on_enter(game_ctx);
                 self.stack.push(game_state);
             }
             Transition::PopAllButFirst => {
@@ -144,10 +141,11 @@ pub enum Command {
     CommitUnit(Unit),
     DamageUnit(UnitId, i32),
     SetupTurn,
-    FocusView(Point),
 }
 
 pub trait GameState: Debug {
+    fn on_enter(&self, _game_ctx: GameCtxView) {}
+
     fn update(
         &mut self,
         msg_queue: &mut VecDeque<GameMsg>,

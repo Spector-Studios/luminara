@@ -19,11 +19,11 @@ pub struct MoveAnimation {
     path: Vec<Point>,
 }
 
-#[derive(Debug)]
+/* #[derive(Debug)]
 pub struct ShiftMapView {
     target_rect: Rect,
     target_tilerect: TileRect,
-}
+} */
 
 impl MoveAnimation {
     pub fn boxed_new(unit: Unit, path: Vec<Point>) -> Box<Self> {
@@ -36,6 +36,9 @@ impl MoveAnimation {
 }
 
 impl GameState for MoveAnimation {
+    fn on_enter(&self, _game_ctx: GameCtxView) {
+        _game_ctx.viewport.set_center_on(self.unit.pos);
+    }
     fn active_unit(&self) -> Option<&Unit> {
         Some(&self.unit)
     }
@@ -44,8 +47,11 @@ impl GameState for MoveAnimation {
         &mut self,
         msg_queue: &mut VecDeque<GameMsg>,
         commands: &mut Commands,
-        _game_ctx: GameCtxView,
+        game_ctx: GameCtxView,
     ) -> Transition {
+        if game_ctx.viewport.is_centering() {
+            return Transition::None;
+        }
         self.timer += get_frame_time();
 
         if self.path.is_empty() {
@@ -63,7 +69,7 @@ impl GameState for MoveAnimation {
         if self.timer >= TICK_TIME {
             self.unit.pos = self.path.pop().unwrap();
             if let Some(pos) = self.path.last() {
-                commands.add(Command::FocusView(*pos));
+                game_ctx.viewport.set_follow(*pos);
             }
             self.timer = 0.0;
         }
@@ -76,11 +82,10 @@ impl GameState for MoveAnimation {
     }
 }
 
-impl ShiftMapView {
+/* impl ShiftMapView {
     pub fn boxed_new(dest: impl Into<Point>, viewport: &Viewport) -> Option<Box<Self>> {
         const MARGIN: i32 = 2;
 
-        assert!(viewport.render_view.is_none());
         let dest = dest.into();
         let mut target_rect = viewport.map_view;
 
@@ -145,4 +150,4 @@ impl GameState for ShiftMapView {
     fn name(&self) -> &'static str {
         "Shift Map View"
     }
-}
+} */

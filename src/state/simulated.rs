@@ -7,6 +7,7 @@ use crate::unit::Unit;
 use crate::world::Faction;
 
 use macroquad::logging::warn;
+use macroquad::rand::ChooseRandom;
 
 use std::collections::VecDeque;
 
@@ -44,7 +45,7 @@ impl GameState for SimulatedManager {
         }
         if let Some(unit) = game_ctx.world.get_unmoved_unit(self.faction) {
             let dijkstra_map = DijkstraMap::new(&game_ctx.world.map, unit, &game_ctx.world.units);
-            commands.add(Command::FocusView(unit.pos));
+            game_ctx.viewport.set_center_on(unit.pos);
             return Transition::Push(MoveSimulated::boxed_new(unit.clone(), dijkstra_map));
         }
 
@@ -99,7 +100,10 @@ impl GameState for MoveSimulated {
         let mut empty_tiles = neighbours.filter(|pt| game_ctx.world.is_tile_empty(*pt));
         let maybe_dest = empty_tiles.find(|pt| self.dijkstra_map.get_reachables().contains(pt));
 
-        let dest = maybe_dest.unwrap_or(self.unit.pos);
+        let dest = maybe_dest.unwrap_or_else(|| {
+            let reachable: Vec<_> = self.dijkstra_map.get_reachables().iter().copied().collect();
+            *reachable.choose().unwrap()
+        });
         let path = self.dijkstra_map.get_path_to(dest);
 
         Transition::Push(MoveAnimation::boxed_new(self.unit.clone(), path))

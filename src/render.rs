@@ -81,8 +81,8 @@ impl RenderContext {
         let start_x = view_rect.left().floor().max(0.0) as i32;
         let start_y = view_rect.top().floor().max(0.0) as i32;
 
-        let end_x = (view_rect.right().ceil() as i32).min(viewport.map_width);
-        let end_y = (view_rect.bottom().ceil() as i32).min(viewport.map_height);
+        let end_x = (view_rect.right().ceil()).min(viewport.map_width) as i32;
+        let end_y = (view_rect.bottom().ceil()).min(viewport.map_height) as i32;
 
         for y in start_y..end_y {
             for x in start_x..end_x {
@@ -111,7 +111,7 @@ impl RenderContext {
         draw_texture_ex(texture, x, y, color, params);
     }
 
-    pub fn render_unit(&self, unit: &Unit, viewport: &Viewport) {
+    pub fn render_unit(unit: &Unit, viewport: &Viewport) {
         let color = if unit.turn_complete {
             Color::new(0.75, 0.75, 0.75, 1.0)
         } else {
@@ -175,25 +175,91 @@ impl RenderContext {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum ViewportMode {
+    CenterOn(Point),
+    Follow(Point),
+    Free,
+}
 #[derive(Debug)]
 pub struct Viewport {
-    pub map_view: TileRect,
-    pub render_view: Option<Rect>,
-    map_width: i32,
-    map_height: i32,
+    render_view: Rect,
+    map_width: f32,
+    map_height: f32,
+    mode: ViewportMode,
 }
 impl Viewport {
+    const SHIFT_SPEED: f32 = 0.2;
+    const MARGIN: f32 = 2.0;
+
     pub fn new(map_width: i32, map_height: i32) -> Self {
         Self {
-            map_view: TileRect::with_size(0, 0, VIEWPORT_TILES_WIDTH, VIEWPORT_TILES_HEIGHT),
-            render_view: None,
-            map_width,
-            map_height,
+            render_view: Rect::new(0.0, 0.0, VIEWPORT_TILES_WIDTH_F, VIEWPORT_TILES_HEIGHT_F),
+            map_width: map_width as f32,
+            map_height: map_height as f32,
+            mode: ViewportMode::Free,
         }
     }
 
     pub fn get_render_rect(&self) -> Rect {
-        self.render_view.unwrap_or_else(|| self.map_view.into())
+        self.render_view
+    }
+
+    pub fn set_center_on(&mut self, pt: impl Into<Point>) {
+        self.mode = ViewportMode::CenterOn(pt.into());
+    }
+
+    pub fn set_follow(&mut self, pt: impl Into<Point>) {
+        self.mode = ViewportMode::Follow(pt.into());
+    }
+
+    pub fn update(&mut self) {
+        info!("Viewport");
+        match self.mode {
+            ViewportMode::CenterOn(point) => {
+                let centered = self.center_point(point);
+                if centered {
+                    self.mode = ViewportMode::Free;
+                }
+            }
+            ViewportMode::Follow(point) => self.ensure_in_view(point),
+            ViewportMode::Free => {}
+        }
+    }
+
+    fn center_point(&mut self, pt: Point) -> bool {
+        let pt: Vec2 = pt.into();
+
+        if self.render_view.center().distance_squared(pt) < 0.01 {
+            self.render_view.x = pt.x - (VIEWPORT_TILES_WIDTH_F / 2.0);
+            self.render_view.y = pt.y - (VIEWPORT_TILES_HEIGHT_F / 2.0);
+            self.clamp_render_view_to_map();
+            true
+        } else {
+            let shift_dir = (pt - self.render_view.center()).normalize();
+            self.render_view = self.render_view.offset(shift_dir * Self::SHIFT_SPEED);
+            self.clamp_render_view_to_map();
+            false
+        }
+    }
+
+    fn ensure_in_view(&mut self, pt: Point) {
+        info!("follow");
+        let pt: Vec2 = pt.into();
+        let delta = pt - self.render_view.center();
+
+        if delta.x.abs() > (VIEWPORT_TILES_WIDTH_F / 2.0 - Self::MARGIN)
+            || delta.y.abs() > (VIEWPORT_TILES_HEIGHT_F / 2.0 - Self::MARGIN)
+        {
+            info!("follow 2");
+            let delta = delta.clamp_length_max(Self::SHIFT_SPEED * 4.0);
+            self.render_view = self.render_view.offset(delta * Self::SHIFT_SPEED);
+            self.clamp_render_view_to_map();
+        }
+    }
+
+    pub fn is_centering(&self) -> bool {
+        matches!(self.mode, ViewportMode::CenterOn(_))
     }
 
     pub fn is_point_visible(&self, pt: impl Into<Vec2>) -> bool {
@@ -206,11 +272,15 @@ impl Viewport {
             && pt.y <= render_rect.bottom().ceil()
     }
 
-    pub fn clamp_tilerect_to_map(&self, mut rect: TileRect) -> TileRect {
-        rect.x = rect.x.clamp(0, self.map_width - VIEWPORT_TILES_WIDTH);
-        rect.y = rect.y.clamp(0, self.map_height - VIEWPORT_TILES_HEIGHT);
-
-        rect
+    fn clamp_render_view_to_map(&mut self) {
+        self.render_view.x = self
+            .render_view
+            .x
+            .clamp(0.0, self.map_width - VIEWPORT_TILES_WIDTH_F);
+        self.render_view.y = self
+            .render_view
+            .y
+            .clamp(0.0, self.map_height - VIEWPORT_TILES_HEIGHT_F);
     }
 }
 
