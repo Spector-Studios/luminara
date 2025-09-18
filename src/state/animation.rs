@@ -28,9 +28,6 @@ impl MoveAnimation {
 }
 
 impl GameState for MoveAnimation {
-    fn on_enter(&self, game_ctx: GameCtxView) {
-        game_ctx.viewport.set_center_on(self.unit.pos);
-    }
     fn active_unit(&self) -> Option<&Unit> {
         Some(&self.unit)
     }
