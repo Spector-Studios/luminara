@@ -7,7 +7,6 @@ use std::fmt::Debug;
 use super::player::PlayerSelect;
 use crate::cursor::Cursor;
 use crate::game::{GameContext, GameCtxView};
-use crate::math::Point;
 use crate::render::RenderContext;
 use crate::render::RenderCtxWithViewport;
 // use crate::state::animation::ShiftMapView;
@@ -74,7 +73,7 @@ impl StateMachine {
         self.stack
             .iter()
             .rev()
-            .find_map(|state| state.render_map_overlay(&render_ctx));
+            .find_map(|state| state.render_map_overlay(render_ctx));
 
         let mut operating_unit = None;
         for state in self.stack.iter().rev() {
@@ -101,7 +100,7 @@ impl StateMachine {
         self.stack
             .iter()
             .rev()
-            .find_map(|state| state.render_ui_layer(&render_ctx));
+            .find_map(|state| state.render_ui_layer(render_ctx));
 
         set_default_camera();
         game_ctx.controller.draw(None);
@@ -154,10 +153,10 @@ pub trait GameState: Debug {
     ) -> Transition;
     fn name(&self) -> &'static str;
 
-    fn render_map_overlay(&self, _render_ctx: &RenderCtxWithViewport) -> Option<()> {
+    fn render_map_overlay(&self, _render_ctx: RenderCtxWithViewport) -> Option<()> {
         None
     }
-    fn render_ui_layer(&self, _render_ctx: &RenderCtxWithViewport) -> Option<()> {
+    fn render_ui_layer(&self, _render_ctx: RenderCtxWithViewport) -> Option<()> {
         None
     }
 

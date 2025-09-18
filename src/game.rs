@@ -51,7 +51,7 @@ impl GameContext {
     }
 
     pub fn get_render_view(&'_ self) -> RenderCtxWithViewport<'_> {
-        RenderCtxWithViewport::new(&self.render_ctx, &self.viewport)
+        RenderCtxWithViewport::new(&self.viewport)
     }
 }
 

@@ -14,6 +14,14 @@ pub struct TileRect {
     pub h: i32,
 }
 
+#[must_use]
+pub fn clamp_rect_to_bounds(mut rect: Rect, width: f32, height: f32) -> Rect {
+    rect.x = rect.x.clamp(0.0, width - rect.w);
+    rect.y = rect.y.clamp(0.0, height - rect.h);
+
+    rect
+}
+
 impl Point {
     pub const fn new(x: i32, y: i32) -> Self {
         Self { x, y }
@@ -76,6 +84,16 @@ impl From<(i32, i32)> for Point {
         Self {
             x: value.0,
             y: value.1,
+        }
+    }
+}
+
+// TODO This should be TryFrom
+impl From<(u32, u32)> for Point {
+    fn from(value: (u32, u32)) -> Self {
+        Self {
+            x: value.0.try_into().unwrap(),
+            y: value.1.try_into().unwrap(),
         }
     }
 }

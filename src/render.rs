@@ -1,7 +1,7 @@
 use std::f32;
 
 use crate::map::Map;
-use crate::math::{Point, TileRect};
+use crate::math::{Point, clamp_rect_to_bounds};
 use crate::unit::Unit;
 
 use macroquad::prelude::vec2;
@@ -175,9 +175,9 @@ impl RenderContext {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 enum ViewportMode {
-    CenterOn(Point),
+    CenterOn { corner: Vec2 },
     Follow(Point),
     Free,
 }
@@ -189,9 +189,11 @@ pub struct Viewport {
     mode: ViewportMode,
 }
 impl Viewport {
-    const SHIFT_SPEED: f32 = 0.2;
+    // TODO Make this a global constant from which all animation speeds are derived from
+    pub const SHIFT_SPEED: f32 = 0.35;
     const MARGIN: f32 = 2.0;
 
+    #[allow(clippy::cast_precision_loss)]
     pub fn new(map_width: i32, map_height: i32) -> Self {
         Self {
             render_view: Rect::new(0.0, 0.0, VIEWPORT_TILES_WIDTH_F, VIEWPORT_TILES_HEIGHT_F),
@@ -205,8 +207,15 @@ impl Viewport {
         self.render_view
     }
 
-    pub fn set_center_on(&mut self, pt: impl Into<Point>) {
-        self.mode = ViewportMode::CenterOn(pt.into());
+    pub fn set_center_on(&mut self, pt: impl Into<Vec2>) {
+        let pt = pt.into();
+        let mut centered_rect = self.render_view;
+        centered_rect.x = (pt.x - (VIEWPORT_TILES_WIDTH_F / 2.0)).round();
+        centered_rect.y = (pt.y - (VIEWPORT_TILES_HEIGHT_F / 2.0)).round();
+        centered_rect = clamp_rect_to_bounds(centered_rect, self.map_width, self.map_height);
+        self.mode = ViewportMode::CenterOn {
+            corner: centered_rect.point(),
+        };
     }
 
     pub fn set_follow(&mut self, pt: impl Into<Point>) {
@@ -214,10 +223,9 @@ impl Viewport {
     }
 
     pub fn update(&mut self) {
-        info!("Viewport");
         match self.mode {
-            ViewportMode::CenterOn(point) => {
-                let centered = self.center_point(point);
+            ViewportMode::CenterOn { corner } => {
+                let centered = self.center_point(corner);
                 if centered {
                     self.mode = ViewportMode::Free;
                 }
@@ -227,39 +235,42 @@ impl Viewport {
         }
     }
 
-    fn center_point(&mut self, pt: Point) -> bool {
-        let pt: Vec2 = pt.into();
+    fn center_point(&mut self, corner: Vec2) -> bool {
+        let mut delta = corner - self.render_view.point();
+        delta = delta.clamp_length_max(Self::SHIFT_SPEED);
+        self.render_view = self.render_view.offset(delta);
 
-        if self.render_view.center().distance_squared(pt) < 0.01 {
-            self.render_view.x = pt.x - (VIEWPORT_TILES_WIDTH_F / 2.0);
-            self.render_view.y = pt.y - (VIEWPORT_TILES_HEIGHT_F / 2.0);
-            self.clamp_render_view_to_map();
-            true
-        } else {
-            let shift_dir = (pt - self.render_view.center()).normalize();
-            self.render_view = self.render_view.offset(shift_dir * Self::SHIFT_SPEED);
-            self.clamp_render_view_to_map();
-            false
-        }
+        (corner - self.render_view.point()).length_squared() < f32::EPSILON
     }
 
     fn ensure_in_view(&mut self, pt: Point) {
-        info!("follow");
         let pt: Vec2 = pt.into();
-        let delta = pt - self.render_view.center();
+        let center = self.render_view.center();
 
-        if delta.x.abs() > (VIEWPORT_TILES_WIDTH_F / 2.0 - Self::MARGIN)
-            || delta.y.abs() > (VIEWPORT_TILES_HEIGHT_F / 2.0 - Self::MARGIN)
-        {
-            info!("follow 2");
-            let delta = delta.clamp_length_max(Self::SHIFT_SPEED * 4.0);
-            self.render_view = self.render_view.offset(delta * Self::SHIFT_SPEED);
-            self.clamp_render_view_to_map();
+        let dx = if (pt.x - center.x).abs() > (VIEWPORT_TILES_WIDTH_F / 2.0 - Self::MARGIN) {
+            pt.x - center.x
+        } else {
+            center.x.round() - center.x
+        };
+
+        let dy = if (pt.y - center.y).abs() > (VIEWPORT_TILES_HEIGHT_F / 2.0 - Self::MARGIN) {
+            pt.y - center.y
+        } else {
+            center.y.round() - center.y
+        };
+
+        let delta = Vec2::new(dx, dy);
+
+        if delta.length_squared() > 0.0 {
+            let delta = delta.clamp_length_max(Self::SHIFT_SPEED);
+            self.render_view = self.render_view.offset(delta);
+            self.render_view =
+                clamp_rect_to_bounds(self.render_view, self.map_width, self.map_height);
         }
     }
 
     pub fn is_centering(&self) -> bool {
-        matches!(self.mode, ViewportMode::CenterOn(_))
+        matches!(self.mode, ViewportMode::CenterOn { .. })
     }
 
     pub fn is_point_visible(&self, pt: impl Into<Vec2>) -> bool {
@@ -271,42 +282,27 @@ impl Viewport {
             && pt.y >= render_rect.top().floor()
             && pt.y <= render_rect.bottom().ceil()
     }
-
-    fn clamp_render_view_to_map(&mut self) {
-        self.render_view.x = self
-            .render_view
-            .x
-            .clamp(0.0, self.map_width - VIEWPORT_TILES_WIDTH_F);
-        self.render_view.y = self
-            .render_view
-            .y
-            .clamp(0.0, self.map_height - VIEWPORT_TILES_HEIGHT_F);
-    }
 }
 
 #[derive(Clone, Copy, Debug)]
 pub struct RenderCtxWithViewport<'a> {
-    render_ctx: &'a RenderContext,
     pub viewport: &'a Viewport,
 }
 impl<'a> RenderCtxWithViewport<'a> {
-    pub fn new(render_ctx: &'a RenderContext, viewport: &'a Viewport) -> Self {
-        Self {
-            render_ctx,
-            viewport,
-        }
+    pub fn new(viewport: &'a Viewport) -> Self {
+        Self { viewport }
     }
 
-    pub fn is_tile_visible(&self, pt: impl Into<Vec2>) -> bool {
+    pub fn is_tile_visible(self, pt: impl Into<Vec2>) -> bool {
         self.viewport.is_point_visible(pt)
     }
 
-    pub fn render_tile_rectangle(&self, pos: impl Into<Vec2>, color: Color, scale: f32) {
+    pub fn render_tile_rectangle(self, pos: impl Into<Vec2>, color: Color, scale: f32) {
         RenderContext::render_tile_rectangle(pos, color, scale, self.viewport);
     }
 
     pub fn render_sprite(
-        &self,
+        self,
         pos: impl Into<Vec2>,
         texture: &Texture2D,
         color: Color,

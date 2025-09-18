@@ -1,5 +1,6 @@
 use crate::math::Point;
 use crate::math::TileRect;
+use crate::prelude::Bounds2D;
 
 use macroquad::rand::ChooseRandom;
 use macroquad::texture::Texture2D;
@@ -23,7 +24,7 @@ impl Map {
         }
     }
 
-    pub fn filled(width: u32, height: u32, grass: &Texture2D, forest: &Texture2D) -> Self {
+    pub fn random(width: u32, height: u32, grass: &Texture2D, forest: &Texture2D) -> Self {
         let mut map = Self::empty(width, height);
 
         for _ in 0..width * height {
@@ -41,6 +42,11 @@ impl Map {
             }
         }
 
+        for i in 0..width {
+            let idx = map.point_to_idx((i, height - 1));
+            map.textures[idx] = forest.clone();
+        }
+
         map
     }
 
@@ -52,7 +58,15 @@ impl Map {
         self.textures.get(self.point_to_idx(pos.into())).unwrap()
     }
 
-    pub fn point_to_idx(&self, point: Point) -> usize {
+    pub fn get_bounds(&self) -> Bounds2D {
+        (
+            0..self.width.try_into().unwrap(),
+            0..self.height.try_into().unwrap(),
+        )
+    }
+
+    pub fn point_to_idx(&self, point: impl Into<Point>) -> usize {
+        let point = point.into();
         let (x, y) = (point.x, point.y);
         (TryInto::<usize>::try_into(y).unwrap() * self.width)
             + TryInto::<usize>::try_into(x).unwrap()

@@ -110,7 +110,6 @@ impl Controller {
         controller
     }
 
-    #[inline]
     fn resize(&mut self) {
         info!("Controller resize requested.");
 
@@ -177,7 +176,6 @@ impl Controller {
         }
     }
 
-    #[inline]
     pub fn update(&mut self) {
         if (self.screen_width - screen_width()).abs() > 1.0
             || (self.screen_height - screen_height()).abs() > 1.0

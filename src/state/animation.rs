@@ -1,11 +1,9 @@
-use super::state_machine::{Command, Commands, GameMsg, GameState, Transition};
+use super::state_machine::{Commands, GameMsg, GameState, Transition};
 use crate::game::GameCtxView;
-use crate::math::{Point, TileRect};
-use crate::render::Viewport;
+use crate::math::Point;
 use crate::unit::Unit;
 
 use macroquad::math::Vec2;
-use macroquad::prelude::Rect;
 use macroquad::time::get_frame_time;
 
 use std::collections::VecDeque;
@@ -30,8 +28,8 @@ impl MoveAnimation {
 }
 
 impl GameState for MoveAnimation {
-    fn on_enter(&self, _game_ctx: GameCtxView) {
-        _game_ctx.viewport.set_center_on(self.unit.pos);
+    fn on_enter(&self, game_ctx: GameCtxView) {
+        game_ctx.viewport.set_center_on(self.unit.pos);
     }
     fn active_unit(&self) -> Option<&Unit> {
         Some(&self.unit)
@@ -40,7 +38,7 @@ impl GameState for MoveAnimation {
     fn update(
         &mut self,
         msg_queue: &mut VecDeque<GameMsg>,
-        commands: &mut Commands,
+        _commands: &mut Commands,
         game_ctx: GameCtxView,
     ) -> Transition {
         if game_ctx.viewport.is_centering() {

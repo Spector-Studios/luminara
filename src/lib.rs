@@ -6,6 +6,7 @@ mod game;
 mod map;
 mod math;
 mod pathfinding;
+mod prelude;
 mod render;
 mod state;
 mod ui;
@@ -73,7 +74,7 @@ pub async fn main() {
 
     let grass = texture_store.get("grass1.png");
     let forest = texture_store.get("forest1.png");
-    let map = Map::filled(30, 20, &grass, &forest);
+    let map = Map::random(30, 20, &grass, &forest);
 
     storage::store("Global Storage");
     debug!("{:?}", *storage::get::<&str>());

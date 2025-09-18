@@ -15,7 +15,8 @@ use std::collections::{HashMap, HashSet, VecDeque};
 
 use input_lib::Buttons;
 use macroquad::color::{BLUE, Color, RED, WHITE};
-use macroquad::prelude::warn;
+use macroquad::logging::info;
+use macroquad::logging::warn;
 
 const MARKER_SCALE: f32 = 0.95;
 
@@ -87,8 +88,8 @@ impl PlayerSelect {
     }
 }
 impl GameState for PlayerSelect {
-    fn on_enter(&self, _game_ctx: GameCtxView) {
-        _game_ctx.viewport.set_center_on(self.cursor.get_pos());
+    fn on_enter(&self, game_ctx: GameCtxView) {
+        game_ctx.viewport.set_center_on(self.cursor.get_pos());
     }
     fn update(
         &mut self,
@@ -114,7 +115,8 @@ impl GameState for PlayerSelect {
             return Transition::None;
         }
 
-        self.cursor.update(game_ctx.controller, &game_ctx.world.map);
+        self.cursor
+            .update(game_ctx.controller, &game_ctx.world.map.get_bounds());
         game_ctx.viewport.set_follow(self.cursor.get_pos());
 
         if game_ctx.world.get_unmoved_unit(Faction::Player).is_none() {
@@ -138,8 +140,13 @@ impl GameState for PlayerSelect {
         Transition::None
     }
 
-    fn render_ui_layer(&self, render_ctx: &RenderCtxWithViewport) -> Option<()> {
-        render_ctx.render_sprite(self.cursor.get_pos(), &self.cursor.texture, WHITE, 1.2);
+    fn render_ui_layer(&self, render_ctx: RenderCtxWithViewport<'_>) -> Option<()> {
+        render_ctx.render_sprite(
+            self.cursor.get_render_pos(),
+            &self.cursor.texture,
+            WHITE,
+            1.2,
+        );
 
         Some(())
     }
@@ -183,7 +190,7 @@ impl GameState for PlayerMove {
     fn update(
         &mut self,
         msg_queue: &mut VecDeque<GameMsg>,
-        commands: &mut Commands,
+        _commands: &mut Commands,
         game_ctx: GameCtxView,
     ) -> Transition {
         if let Some(msg) = msg_queue.pop_front() {
@@ -197,7 +204,8 @@ impl GameState for PlayerMove {
             }
         }
 
-        self.cursor.update(game_ctx.controller, &game_ctx.world.map);
+        self.cursor
+            .update(game_ctx.controller, &game_ctx.world.map.get_bounds());
         game_ctx.viewport.set_follow(self.cursor.get_pos());
 
         if game_ctx.controller.clicked(Buttons::B) {
@@ -227,7 +235,7 @@ impl GameState for PlayerMove {
         Transition::None
     }
 
-    fn render_map_overlay(&self, render_ctx: &RenderCtxWithViewport) -> Option<()> {
+    fn render_map_overlay(&self, render_ctx: RenderCtxWithViewport) -> Option<()> {
         self.dijkstra_map
             .get_reachables()
             .iter()
@@ -246,8 +254,13 @@ impl GameState for PlayerMove {
         Some(())
     }
 
-    fn render_ui_layer(&self, render_ctx: &RenderCtxWithViewport) -> Option<()> {
-        render_ctx.render_sprite(self.cursor.get_pos(), &self.cursor.texture, WHITE, 1.2);
+    fn render_ui_layer(&self, render_ctx: RenderCtxWithViewport) -> Option<()> {
+        render_ctx.render_sprite(
+            self.cursor.get_render_pos(),
+            &self.cursor.texture,
+            WHITE,
+            1.2,
+        );
 
         Some(())
     }
@@ -336,7 +349,7 @@ impl GameState for PlayerAction {
         Transition::None
     }
 
-    fn render_map_overlay(&self, render_ctx: &RenderCtxWithViewport) -> Option<()> {
+    fn render_map_overlay(&self, render_ctx: RenderCtxWithViewport) -> Option<()> {
         self.targetables
             .iter()
             .filter(|pt| render_ctx.is_tile_visible(**pt))
@@ -347,7 +360,7 @@ impl GameState for PlayerAction {
         Some(())
     }
 
-    fn render_ui_layer(&self, _render_ctx: &RenderCtxWithViewport) -> Option<()> {
+    fn render_ui_layer(&self, _render_ctx: RenderCtxWithViewport) -> Option<()> {
         self.menu.render();
 
         Some(())
@@ -369,6 +382,9 @@ impl PlayerAttack {
     }
 }
 impl GameState for PlayerAttack {
+    fn on_enter(&self, _game_ctx: GameCtxView) {
+        info!("{:?}", self.targets);
+    }
     fn update(
         &mut self,
         msg_queue: &mut VecDeque<GameMsg>,
@@ -395,12 +411,17 @@ impl GameState for PlayerAttack {
             self.selected = (self.selected + self.targets.len() - 1) % self.targets.len();
         }
 
-        self.cursor.set_pos(self.targets[self.selected].1);
+        self.cursor.snap_to_pos(self.targets[self.selected].1);
         Transition::None
     }
 
-    fn render_ui_layer(&self, render_ctx: &RenderCtxWithViewport) -> Option<()> {
-        render_ctx.render_sprite(self.cursor.get_pos(), &self.cursor.texture, WHITE, 1.0);
+    fn render_ui_layer(&self, render_ctx: RenderCtxWithViewport) -> Option<()> {
+        render_ctx.render_sprite(
+            self.cursor.get_render_pos(),
+            &self.cursor.texture,
+            WHITE,
+            1.0,
+        );
 
         Some(())
     }
