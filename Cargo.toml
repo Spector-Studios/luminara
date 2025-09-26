@@ -7,7 +7,7 @@ edition = "2024"
 crate-type = ["lib", "cdylib"]
 
 [workspace]
-members = ["crates/input_lib", "crates/macroquad_ex_ui"]
+members = ["crates/input_lib", "crates/macroquad_ex_ui", "crates/shade"]
 
 [workspace.dependencies]
 macroquad = "0.4.14"
@@ -15,6 +15,7 @@ macroquad = "0.4.14"
 [dependencies]
 input_lib = { version = "0.1.0", path = "crates/input_lib" }
 macroquad.workspace = true
+shade = { version = "0.1.0", path = "crates/shade" }
 
 [profile.android-dev]
 inherits = "dev"

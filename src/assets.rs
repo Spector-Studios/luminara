@@ -32,7 +32,7 @@ impl TextureStore {
             self.textures.insert(path, texture);
         }
 
-        // INFO Creating Atlas causes blank lines between some map tiles
+        // INFO WARN Creating Atlas causes blank lines between some map tiles
         // build_textures_atlas();
     }
 

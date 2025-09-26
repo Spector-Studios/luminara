@@ -1,0 +1,15 @@
+[package]
+name = "shade"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+default = []
+debug-log = []
+
+[dependencies]
+enumset = "1.1.10"
+macroquad.workspace = true
+slotmap = "1.0.7"
+thiserror = "2.0.16"
+ttmap = "0.3.0"
