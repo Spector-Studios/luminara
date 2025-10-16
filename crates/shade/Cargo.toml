@@ -11,5 +11,5 @@ debug-log = []
 enumset = "1.1.10"
 macroquad.workspace = true
 slotmap = "1.0.7"
-thiserror = "2.0.16"
+thiserror = "2.0.17"
 ttmap = "0.3.0"
