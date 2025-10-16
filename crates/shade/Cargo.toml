@@ -8,6 +8,7 @@ default = []
 debug-log = []
 
 [dependencies]
+async-channel = "2.5.0"
 enumset = "1.1.10"
 macroquad.workspace = true
 slotmap = "1.0.7"
