@@ -39,6 +39,14 @@ impl InputManager {
             .difference(self.last_input.buttons)
             .contains(btn)
     }
+
+    pub(crate) fn update(&mut self) {
+        todo!()
+    }
+
+    pub(crate) fn render(&mut self) {
+        todo!()
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]

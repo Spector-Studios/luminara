@@ -1,62 +1,53 @@
-#[cfg(feature = "debug-log")]
 macro_rules! internal_w {
-    (target: $target:expr, $($arg:tt)+) => (
-        macroquad::logging::warn!(target: $target,$($arg)+);
-    );
-    ($($arg:tt)+) => (
-        macroquad::logging::warn!("[Shade Engine; {}:{}] {}",file!(),line!(),$($arg)+);
-    )
-}
-
-#[cfg(not(feature = "debug-log"))]
-macro_rules! internal_w {
-    (target: $target:expr, $($arg:tt)+) => {};
-    ($($arg:tt)+) => {};
+    ($($arg:tt)*) => {
+        #[cfg(feature="debug-log")] {
+            macroquad::logging::warn!(
+                "[ShadeEngine: {}:{}] {}",
+                file!(),
+                line!(),
+                format_args!($($arg)*)
+            );
+        }
+    };
 }
 
 macro_rules! internal_i {
-    (target: $target:expr, $($arg:tt)+) => (
-        macroquad::logging::info!(target: $target,$($arg)+);
-    );
-    ($($arg:tt)+) => (
-        macroquad::logging::info!("[Shade Engine; {}:{}] {}",file!(),line!(),$($arg)+);
-    )
-}
-
-#[cfg(not(feature = "debug-log"))]
-macro_rules! internal_i {
-    (target: $target:expr, $($arg:tt)+) => {};
-    ($($arg:tt)+) => {};
+    ($($arg:tt)*) => {
+        #[cfg(feature = "debug-log")] {
+            macroquad::logging::info!(
+                "[ShadeEngine: {}:{}] {}",
+                file!(),
+                line!(),
+                format_args!($($arg)*)
+            );
+        }
+    };
 }
 
 macro_rules! internal_e {
-    (target: $target:expr, $($arg:tt)+) => (
-        macroquad::logging::error!(target: $target,$($arg)+);
-    );
-    ($($arg:tt)+) => (
-        macroquad::logging::error!("[Shade Engine; {}:{}] {}",file!(),line!(),$($arg)+);
-    )
-}
-
-#[cfg(not(feature = "debug-log"))]
-macro_rules! internal_e {
-    (target: $target:expr, $($arg:tt)+) => {};
-    ($($arg:tt)+) => {};
+    ($($arg:tt)*) => {
+        #[cfg(feature="debug-log")] {
+            macroquad::logging::error!(
+                "[ShadeEngine: {}:{}] {}",
+                file!(),
+                line!(),
+                format_args!($($arg)*)
+            );
+        }
+    };
 }
 
 macro_rules! internal_d {
-    (target: $target:expr, $($arg:tt)+) => (
-        macroquad::logging::debug!(target: $target,$($arg)+);
-    );
-    ($($arg:tt)+) => (
-        macroquad::logging::debug!("[Shade Engine; {}:{}] {}",file!(),line!(),$($arg)+);
-    )
-}
-
-#[cfg(not(feature = "debug-log"))]
-macro_rules! internal_d {
-    (target: $target:expr, $($arg:tt)+) => {};
-    ($($arg:tt)+) => {};
+    ($($arg:tt)*) => {
+        #[cfg(feature="debug-log")] {
+            macroquad::logging::debug!(
+                "[ShadeEngine: {}:{}] {}",
+                file!(),
+                line!(),
+                format_args!($($arg)*)
+            );
+        }
+    };
 }
 
 pub(crate) use internal_d;

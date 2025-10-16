@@ -1,136 +1,165 @@
 use std::collections::HashMap;
+use std::sync::{Arc, OnceLock};
 
-use macroquad::experimental::coroutines::{Coroutine, start_coroutine};
-use macroquad::file::load_file;
+use macroquad::experimental::coroutines::start_coroutine;
+use macroquad::logging::error;
+use macroquad::prelude::load_file;
 use macroquad::text::{Font, load_ttf_font_from_bytes};
 use macroquad::texture::Texture2D;
-use slotmap::{SlotMap, SparseSecondaryMap};
 use ttmap::TypeMap;
 
-use crate::assets::key::AssetKey;
-use crate::errors::{ShadeErrors, combine_errors};
-use crate::sealed;
+use crate::errors::{AssetDecodeError, error_sender};
+use crate::{SendableError, sealed};
 
 mod key;
 
+const PLACEHOLDER_TEXTURE: [u8; 16] = [
+    255, 0, 255, 255, //Magenta
+    255, 255, 255, 255, //Black
+    255, 255, 255, 255, //Black
+    255, 0, 255, 255, //Magenta
+];
+
 trait Asset: Send + Sync + 'static {
-    fn from_bytes(bytes: Vec<u8>) -> Result<Self, ShadeErrors>
+    fn from_bytes(bytes: Vec<u8>) -> Result<Self, Box<SendableError>>
+    where
+        Self: Sized;
+
+    fn place_holder() -> Self
     where
         Self: Sized;
 }
 impl<T: GenericAsset> Asset for T {
-    fn from_bytes(bytes: Vec<u8>) -> Result<T, ShadeErrors> {
+    fn from_bytes(bytes: Vec<u8>) -> Result<T, Box<SendableError>> {
         T::from_bytes(bytes)
     }
+    fn place_holder() -> Self {
+        T::place_holder()
+    }
 }
+
 impl Asset for Texture2D {
-    fn from_bytes(bytes: Vec<u8>) -> Result<Texture2D, ShadeErrors> {
+    fn from_bytes(bytes: Vec<u8>) -> Result<Texture2D, Box<SendableError>> {
         Ok(Texture2D::from_file_with_format(&bytes, None))
+    }
+
+    fn place_holder() -> Self {
+        Texture2D::from_rgba8(2, 2, &PLACEHOLDER_TEXTURE)
     }
 }
 impl Asset for Font {
-    fn from_bytes(bytes: Vec<u8>) -> Result<Font, ShadeErrors> {
+    fn from_bytes(bytes: Vec<u8>) -> Result<Font, Box<SendableError>> {
         Ok(load_ttf_font_from_bytes(&bytes)?)
+    }
+
+    fn place_holder() -> Self {
+        load_ttf_font_from_bytes(include_bytes!("ProggyClean.ttf"))
+            .expect("This is the default font")
     }
 }
 
 pub trait GenericAsset: Send + Sync + 'static {
-    fn from_bytes(bytes: Vec<u8>) -> Result<Self, ShadeErrors>
+    fn from_bytes(bytes: Vec<u8>) -> Result<Self, Box<SendableError>>
+    where
+        Self: Sized;
+
+    fn place_holder() -> Self
     where
         Self: Sized;
 }
 
-type FileLoadingCoroutine = Coroutine<Result<Vec<u8>, macroquad::Error>>;
-
 struct AssetStore<T: Asset> {
-    store: SlotMap<AssetKey<T>, Option<T>>,
-    loaded: HashMap<Box<str>, Handle<T>>,
-    loading: SparseSecondaryMap<AssetKey<T>, FileLoadingCoroutine>,
+    store: HashMap<Box<str>, Handle<T>>,
 }
 
 impl<T: Asset> AssetStore<T> {
     fn new() -> Self {
         Self {
-            store: SlotMap::with_key(),
-            loaded: HashMap::new(),
-            loading: SparseSecondaryMap::new(),
+            store: HashMap::new(),
         }
-    }
-
-    fn try_get(&self, handle: Handle<T>) -> Option<&T> {
-        self.store
-            .get(handle.key)
-            .expect("Handle should not live longer than asset")
-            .as_ref()
     }
 
     fn load(&mut self, path: &str) -> Handle<T> {
-        if let Some(handle) = self.loaded.get(path) {
-            return *handle;
+        if let Some(handle) = self.store.get(path) {
+            return handle.clone();
         }
 
-        let new_key = self.store.insert(None);
+        let new_handle = Handle::new();
+        self.store.insert(path.into(), new_handle.clone());
 
         let boxed_path: Box<str> = Box::from(path);
 
-        // TODO This could take care of inserting the asset but
-        // then self.store needs to be Arc<RwLock<>> which makes
-        // self.get() impossible
-        let loading_coroutine = start_coroutine(async move { load_file(&boxed_path).await });
-        self.loading.insert(new_key, loading_coroutine);
+        let cloned_handle = new_handle.clone();
+        let error_tx = error_sender();
+        let _loading_coroutine = start_coroutine(async move {
+            let file = match load_file(&boxed_path).await {
+                Ok(bytes) => Some(bytes),
+                Err(err) => {
+                    error_tx.send(err.into()).await.unwrap();
+                    None
+                }
+            };
 
-        let new_handle = Handle::from_key(new_key);
-        self.loaded.insert(path.into(), new_handle);
+            let asset = match file {
+                Some(bytes) => match T::from_bytes(bytes) {
+                    Ok(t) => t,
+                    Err(err) => {
+                        let decode_err = AssetDecodeError::new::<T>(&boxed_path, Some(err));
+                        error_tx.send(decode_err.into()).await.unwrap();
+                        T::place_holder()
+                    }
+                },
+                None => T::place_holder(),
+            };
+
+            cloned_handle
+                .inner
+                .set(asset)
+                // .expect() without requiring Debug trait bound on Asset
+                .unwrap_or_else(|_| {
+                    // TODO make this reusable
+                    error!(
+                        "[ShadeEngine {}:{}] {}",
+                        file!(),
+                        line!(),
+                        "This should be the only place this OnceLock is set"
+                    );
+                    panic!()
+                });
+        });
 
         new_handle
     }
-
-    fn update(&mut self) -> Result<(), ShadeErrors> {
-        let mut to_remove = Vec::new();
-
-        for (key, coroutine) in &self.loading {
-            if !coroutine.is_done() {
-                continue;
-            }
-            let bytes = coroutine.retrieve().unwrap()?;
-
-            let asset = T::from_bytes(bytes)?;
-
-            *self.store.get_mut(key).unwrap() = Some(asset);
-            to_remove.push(key);
-        }
-
-        for key in &to_remove {
-            self.loading.remove(*key);
-        }
-
-        Ok(())
-    }
 }
 
+// TODO Make this some kind of dense Arc
 pub struct Handle<T> {
-    key: AssetKey<T>,
+    inner: Arc<OnceLock<T>>,
 }
 impl<T> Handle<T> {
-    fn from_key(key: AssetKey<T>) -> Self {
-        Self { key }
+    fn new() -> Self {
+        Self {
+            inner: Arc::new(OnceLock::new()),
+        }
+    }
+
+    #[inline]
+    #[must_use]
+    pub fn get(&self) -> Option<&T> {
+        self.inner.get()
     }
 }
 impl<T> Clone for Handle<T> {
+    #[inline]
     fn clone(&self) -> Self {
-        *self
+        Self {
+            inner: Arc::clone(&self.inner),
+        }
     }
 }
-impl<T> Copy for Handle<T> {}
 
 #[expect(private_bounds, reason = "Sealed trait")]
 pub trait AssetCollection<T>: sealed::Sealed {
-    fn try_get(&self, handle: Handle<T>) -> Option<&T>;
-
-    fn get(&self, handle: Handle<T>) -> &T {
-        self.try_get(handle).unwrap()
-    }
-
     fn load(&mut self, path: &str) -> Handle<T>;
 }
 
@@ -149,52 +178,34 @@ impl AssetServer {
         }
     }
 
+    #[inline]
     pub fn register_asset_type<T: GenericAsset>(&mut self) {
         self.generics.insert::<AssetStore<T>>(AssetStore::new());
     }
-
-    pub(crate) fn update(&mut self) -> Result<(), ShadeErrors> {
-        combine_errors(vec![
-            self.textures.update(),
-            self.fonts.update(),
-            // FIXME self.generics.iter().update?
-        ])
-    }
 }
 
-impl sealed::Sealed for AssetServer {}
-impl AssetCollection<Texture2D> for AssetServer {
-    fn try_get(&self, handle: Handle<Texture2D>) -> Option<&Texture2D> {
-        self.textures.try_get(handle)
-    }
+impl crate::sealed::Sealed for AssetServer {}
 
+impl AssetCollection<Texture2D> for AssetServer {
+    #[inline]
     fn load(&mut self, path: &str) -> Handle<Texture2D> {
         self.textures.load(path)
     }
 }
 
 impl AssetCollection<Font> for AssetServer {
-    fn try_get(&self, handle: Handle<Font>) -> Option<&Font> {
-        self.fonts.try_get(handle)
-    }
-
+    #[inline]
     fn load(&mut self, path: &str) -> Handle<Font> {
         self.fonts.load(path)
     }
 }
 
-impl<T> AssetCollection<T> for AssetServer
-where
-    T: GenericAsset,
-{
-    fn try_get(&self, handle: Handle<T>) -> Option<&T> {
-        self.generics.get::<AssetStore<T>>()?.try_get(handle)
-    }
-
+impl<T: GenericAsset> AssetCollection<T> for AssetServer {
+    #[inline]
     fn load(&mut self, path: &str) -> Handle<T> {
         self.generics
             .get_mut::<AssetStore<T>>()
-            .expect("Asset type needs to be registered before loading.")
+            .expect("Asset type should be registered before use.")
             .load(path)
     }
 }
