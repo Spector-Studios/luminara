@@ -25,7 +25,6 @@ android {
     }
 
     signingConfigs {
-        // TODO Create a seperate debug signing
         create("releaseSigning") {
             val inCI = System.getenv("CI")?.toBoolean() ?: false
 
@@ -61,6 +60,8 @@ android {
 
     buildTypes {
         getByName("debug") {
+            applicationIdSuffix = ".debug"
+            resValue("string", "app_name", "Luminara (Debug)")
             // Only assign signing config if it was successfully configured
             if (signingConfigs.findByName("releaseSigning")?.storeFile != null) {
                 signingConfig = signingConfigs.getByName("releaseSigning")
